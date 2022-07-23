@@ -25,18 +25,18 @@ class Dataset:
 			st = ''
 			
 			for k in lines[i] :
-				if k == ' ' :
-					if ind == 1 :		
+				if k == ' ':
+					if ind == 1:		
 						self.X[i-3] = int(st)
-					if ind == 2 :
+					if ind == 2:
 						self.Y[i-3] = int(st)
-					if ind == 3 :
+					if ind == 3:
 						self.x[i-3] = int(st)
 	
 					ind = ind + 1
 					st = ''
 					
-				if k.isdigit :
+				if k.isdigit:
 					st = st + k
 					
 			self.y[i-3] = int(st)
