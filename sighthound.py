@@ -42,7 +42,7 @@ def find_point_in_res(start, sight_res, strlen):
 					
 	return px, py, i
 
-def sigh_res_SSIG(sight_res):
+def sigh_res(sight_res):
 	p = np.zeros((4, 7, 2), int)			#4 points, 7 signes, 2 - x and y
 	i = sight_res.rfind("characters")
 	strlen = len(sight_res)
