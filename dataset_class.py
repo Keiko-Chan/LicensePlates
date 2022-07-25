@@ -15,23 +15,37 @@ class Dataset:
 		self.name_img = name_img
 		self.path = path
 		
-	def read_txt_SSIG(self):
+	def read_txt(self, dset):
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
-		for i in range(3, 10):
+		start = 0
+		end = 0
+		
+		if(dset == "SSIG"):
+			start = 3
+			end = 10
+		
+		if(dset == "UFPR"):
+			start = 8
+			end = 15
+		
+		for i in range(start, end):
 			#print(lines[i])
 			ind = 0
 			st = ''
 			
-			for k in lines[i] :
+			dots = lines[start].find(":")
+			slen = len(lines[start])
+			
+			for k in lines[i][dots:slen]:
 				if k == ' ':
 					if ind == 1:		
-						self.X[i-3] = int(st)
+						self.X[i - start] = int(st)
 					if ind == 2:
-						self.Y[i-3] = int(st)
+						self.Y[i - start] = int(st)
 					if ind == 3:
-						self.x[i-3] = int(st)
+						self.x[i - start] = int(st)
 	
 					ind = ind + 1
 					st = ''
@@ -39,10 +53,25 @@ class Dataset:
 				if k.isdigit:
 					st = st + k
 					
-			self.y[i-3] = int(st)
+			self.y[i - start] = int(st)
 					
 			#print(self.X, self.Y, self.x, self.y)
-	
+			
+	def get_lp_number(self, dset):
+		f = open(str(Path(self.path, self.name_txt)), 'r')
+		lines = f.readlines()
+		
+		if(dset == "SSIG"):
+			num_line = 0
+		if(dset == "UFPR"):
+			num_line = 6
+			
+		dots = lines[num_line].find(":")
+		
+		lp_num = lines[num_line][dots + 2 : len(lines[num_line])]
+		print(lp_num)
+		return lp_num
+		
 	def get_img_size(self):
 		img = cv.imread(str(Path(self.path, self.name_img)), cv.IMREAD_GRAYSCALE)
 		dimensions = img.shape
