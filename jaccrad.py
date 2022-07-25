@@ -6,6 +6,7 @@ from sklearn.metrics import jaccard_score
 from scipy.spatial.distance import jaccard
 
 PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
+PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'training', 'track0001' )
 
 def jaccard_res(pred, true, index):
 	similarity = jaccard_score(pred, true, average="micro")
@@ -22,20 +23,25 @@ def sign_average(data, points):
 	
 	res = res / 7
 	print("average =", res)
-	return res	
+	return res
+	
+def calculate_IoU(name, dset, dpath):	
+	image_data = base64.b64encode(open(Path(dpath, name + ".png"), "rb").read()).decode()
+	result = str(Si.sighthound(image_data))
+	print("Detection Results = " + result )
+	
+	data = Dat.Dataset(name + ".txt", name + ".png", dpath)
+	data.read_txt(dset)
+	
+	points = Si.sigh_res(result)
+		
+	sign_average(data, points)
 	
 def main():
-	print("in process")
-	image_data = base64.b64encode(open(Path(PATH_TO_DATA1, 'Track23[01].png'), "rb").read()).decode()
-	result = str(Si.sighthound(image_data))
-	#print("Detection Results = " + result )
+	print("in process...")
 	
-	data = Dat.Dataset('Track23[01].txt', 'Track23[01].png', PATH_TO_DATA1)
-	data.read_txt_SSIG()
-	
-	points = Si.sigh_res_SSIG(result)
-	
-	sign_average(data, points)
+	#calculate_IoU("Track23[01]", "SSIG", PATH_TO_DATA1)
+	calculate_IoU("track0001[03]", "UFPR", PATH_TO_DATA2)
 
 if __name__ == "__main__":
 	main()
