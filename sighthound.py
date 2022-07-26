@@ -41,14 +41,39 @@ def find_point_in_res(start, sight_res, strlen):
 	#print(i)
 					
 	return px, py, i
+	
+def get_number_of_signs(sight_res):
+	indx = sight_res.rfind("index")
+	indx = indx + 7
+	res = int(sight_res[indx]) + 1
+	#print(res)
+	return res
+	
+def get_lp_signs(sight_res):
+	indx1 = sight_res.find("name")
+	indx1 = indx1 + 7
+	
+	indx2 = sight_res.find("confidence", indx1)
+	indx2 = indx2 - 3
+	
+	lp = sight_res[indx1:indx2]
+	#print(lp)
+	return lp	
 
-def sigh_res(sight_res):
-	p = np.zeros((4, 7, 2), int)			#4 points, 7 signes, 2 - x and y
+
+def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
+	res_num = get_number_of_signs(sight_res)
+	lp = get_lp_signs(sight_res)
+	
+	p_res = np.zeros((4, signes_num, 2), int)			#4 points, 7 signes, 2 - x and y
+	p = np.zeros((4, res_num, 2), int)
+	
 	i = sight_res.rfind("characters")
 	strlen = len(sight_res)
 
 	
-	for k in range(0, 7):
+	
+	for k in range(0, res_num):
 		i = sight_res.find("vertices", i)
 		p[0][k][0], p[0][k][1], i = find_point_in_res(i, sight_res, strlen)
 		p[1][k][0], p[1][k][1], i = find_point_in_res(i, sight_res, strlen)
