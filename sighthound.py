@@ -44,9 +44,13 @@ def find_point_in_res(start, sight_res, strlen):
 	
 def get_number_of_signs(sight_res):
 	indx = sight_res.rfind("index")
+
+	if(indx == -1):
+		return 0
+	
 	indx = indx + 7
 	res = int(sight_res[indx]) + 1
-	#print(res)
+	print(res)
 	return res
 	
 def get_lp_signs(sight_res):
@@ -63,10 +67,11 @@ def get_lp_signs(sight_res):
 
 def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
 	res_num = get_number_of_signs(sight_res)
-	lp = get_lp_signs(sight_res)
 	
-	p_res = np.zeros((4, signes_num, 2), int)			#4 points, 7 signes, 2 - x and y
-	p = np.zeros((4, res_num, 2), int)
+	p = np.zeros((4, signes_num, 2), int)			#4 points, 7 signes, 2 - x and y
+	if(signes_num != res_num):
+		return p
+
 	
 	i = sight_res.rfind("characters")
 	strlen = len(sight_res)
