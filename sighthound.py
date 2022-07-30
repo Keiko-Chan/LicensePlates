@@ -13,6 +13,7 @@ def sighthound(image_data):
 	CONN.request("POST", "/v1/recognition?objectType=licenseplate", params, HEADERS)
 	response = CONN.getresponse()
 	result = response.read()
+		
 	return result
 	
 def find_point_in_res(start, sight_res, strlen):
@@ -50,7 +51,7 @@ def get_number_of_signs(sight_res):
 	
 	indx = indx + 7
 	res = int(sight_res[indx]) + 1
-	print(res)
+	#print('signs stated =', res)
 	return res
 	
 def get_lp_signs(sight_res):
@@ -60,8 +61,11 @@ def get_lp_signs(sight_res):
 	indx2 = sight_res.find("confidence", indx1)
 	indx2 = indx2 - 3
 	
-	lp = sight_res[indx1:indx2]
-	#print(lp)
+	if(indx1 == 6):
+		lp = "not stated"
+	else:
+		lp = sight_res[indx1:indx2]
+	#print('founded number =', lp)
 	return lp	
 
 
