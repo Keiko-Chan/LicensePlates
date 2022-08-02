@@ -82,9 +82,9 @@ class Dataset:
 		y_img, x_img = self.get_img_size()	
 		matrix = np.zeros((y_img, x_img))
 		
-		for i in range(0, self.x[indx]):
-			for j in range(0, self.y[indx]):
-				matrix[y_img - 1 - self.Y[indx] + j][self.X[indx] + i] = 1	#may be error hear
+		for i in range(0, self.x[indx] + 1):
+			for j in range(0, self.y[indx] + 1):
+				matrix[y_img - 1 - self.Y[indx] + j][self.X[indx] + i] = 1	#may be error here
 		
 		#print(matrix)
 		return matrix

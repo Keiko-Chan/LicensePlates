@@ -26,7 +26,10 @@ def sighthound(dset, dpath, name):
 		CONN.request("POST", "/v1/recognition?objectType=licenseplate", params, HEADERS)
 		response = CONN.getresponse()
 		result = response.read()
+		result1 = json.loads(result)
+		#print(result1)
 		result = str(result)
+		
 		
 		with open(str(res_path), 'w') as f:
 			json.dump(result, f)
@@ -95,10 +98,10 @@ def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
 	res_num = get_number_of_signs(sight_res)
 	
 	p = np.zeros((3, 2), int)					#4 points, 7 signes, 2 - x and y
-	sq = np.zeros((4, signes_num), int)				#X, Y, x, y
+	rect = np.zeros((4, signes_num), int)				#X, Y, x, y
 	
 	if(signes_num != res_num):
-		return sq
+		return rect
 
 	
 	i = sight_res.rfind("characters")
@@ -113,12 +116,12 @@ def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
 		p[2][0], p[2][1], i = find_point_in_res(i, sight_res, strlen)
 		#p[3][k][0], p[3][k][1], i = find_point_in_res(i, sight_res, strlen)
 		
-		sq[1][k] = p[0][1]
-		sq[0][k] = p[0][0]
-		sq[3][k] = p[2][1] - p[0][1]
-		sq[2][k] = p[1][0] - p[0][0]		
+		rect[1][k] = p[0][1]
+		rect[0][k] = p[0][0]
+		rect[3][k] = p[2][1] - p[0][1]
+		rect[2][k] = p[1][0] - p[0][0]		
 
-	return sq
+	return rect
 
 
 def get_bin_matrix(sq, data, indx):
@@ -130,8 +133,8 @@ def get_bin_matrix(sq, data, indx):
 	x = sq[2][indx]
 	y = sq[3][indx]
 		
-	for i in range(0, x):
-		for j in range(0, y):
+	for i in range(0, x + 1):
+		for j in range(0, y + 1):
 			matrix[y_img - 1 - Y + j][X + i] = 1	#may be error here
 		
 	#print(matrix)
