@@ -10,7 +10,11 @@ PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0091' )
 SIGNS_NUM = 7
 
-def jaccard_res(pred, true, index):
+def jaccard_res(rect, data, index):
+
+	pred = Si.get_bin_matrix(rect, data, index)
+	true = data.get_bin_matrix(index)
+
 	similarity = jaccard_score(pred, true, average="micro")
 
 
@@ -43,10 +47,10 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 		Y1 = data.Y[indx]
 		y1 = data.y[indx]
 		
-	if(X1 + x1 <= X2):
+	if(X1 + x1 < X2):
 		return 0
 	
-	if(Y1 + y1 <= Y2):
+	if(Y1 + y1 < Y2):
 		return 0
 	
 	if(X2 + x2 <= X1 + x1):
@@ -69,9 +73,7 @@ def sign_average(data, rectangle, number):
 	res = 0
 	res1 = 0
 	for  sign_index in range(0, number):
-		true = data.get_bin_matrix(sign_index)
-		pred = Si.get_bin_matrix(rectangle, data, sign_index)
-		res = res + jaccard_res(pred, true, sign_index)
+		res = res + jaccard_res(rectangle, data, sign_index)
 		res1 = res1 + jaccard_rectangle(rectangle, data, sign_index)
 	
 	res = res / SIGNS_NUM
