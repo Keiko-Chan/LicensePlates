@@ -18,7 +18,7 @@ def jaccard_res(rect, data, index):
 	similarity = jaccard_score(pred, true, average="micro")
 
 
-	print(index + 1, "similarity =", similarity)
+	#print(index + 1, "similarity =", similarity)
 	return similarity
 	
 def jaccard_rectangle(rect, data, indx): 	#min max
@@ -65,25 +65,29 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 	
 	res = a * b / (rect[3][indx] * rect[2][indx] + data.y[indx] * data.x[indx] - a * b)
 	
-	print(indx + 1, "similarity1 =", res)
+	#print(indx + 1, "similarity1 =", res)
 
 	return res
 	
 def sign_average(data, rectangle, number):
-	res = 0
+	#res = 0
 	res1 = 0
 	for  sign_index in range(0, number):
-		res = res + jaccard_res(rectangle, data, sign_index)
+		#res = res + jaccard_res(rectangle, data, sign_index)
 		res1 = res1 + jaccard_rectangle(rectangle, data, sign_index)
 	
-	res = res / SIGNS_NUM
+	#res = res / SIGNS_NUM
 	res1 = res1 / SIGNS_NUM
-	print("average =", res, res1)
-	return res
+	#print("average =", res, res1)
+	return res1
 	
 def calculate_IoU_sight(name, dset, dpath):	
 
 	result = Si.sighthound(dset, dpath, name)
+	
+	if result == -1:
+		return -1
+	
 	#print("Detection Results = " + result )
 	rectangle = Si.read_sigh_res(result, SIGNS_NUM)
 	
@@ -93,7 +97,7 @@ def calculate_IoU_sight(name, dset, dpath):
 	return sign_average(data, rectangle, SIGNS_NUM)
 	
 	
-def dataset_IoU_sight(path, dset):
+def dataset_IoU_sight(path, dset):		#dset - SSIG or UFPR
 	res = 0
 	num = 0
 	for dirs,folder,files in os.walk(path):
@@ -101,10 +105,14 @@ def dataset_IoU_sight(path, dset):
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
-				#print(name)
+				print(name)
 				if(Path(dirs, name + ".png").exists() or Path(dirs, name + ".jpg").exists()):
-					num = num + 1
-					res = res + calculate_IoU_sight(name, dset, dirs)
+					
+					iou = calculate_IoU_sight(name, dset, dirs)
+					
+					if iou != -1:
+						num = num + 1
+						res = res + iou
 					
 	res = res / num
 	print(res)
@@ -113,10 +121,11 @@ def dataset_IoU_sight(path, dset):
 def main():
 	print("in process...")
 	
-	calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1)
-	#calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2)
+	#calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1)
+	calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2)
 	
 	#dataset_IoU_sight("../dataset1", "SSIG")
+	#dataset_IoU_sight("../dataset2", "UFPR")
 
 if __name__ == "__main__":
 	main()
