@@ -9,6 +9,7 @@ import numpy as np
 PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0091' )
 SIGNS_NUM = 7
+IMG_FORMAT  = '.png'
 
 def jaccard_res(rect, data, index):
 
@@ -81,23 +82,29 @@ def sign_average(data, rectangle, number):
 	#print("average =", res, res1)
 	return res1
 	
-def calculate_IoU_sight(name, dset, dpath):	
+def calculate_IoU_sight(name, dset, dpath, only_lp):					#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
 
-	result = Si.sighthound(dset, dpath, name)
+	result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
 	
 	if result == -1:
 		return -1
 	
 	#print("Detection Results = " + result )
-	rectangle = Si.read_sigh_res(result, SIGNS_NUM)
+	rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0)
 	
-	data = Dat.Dataset(name + ".txt", name + ".png", dpath)
-	data.read_txt(dset)	
+	data = Dat.Dataset(name + ".txt", name + IMG_FORMAT, dpath, dset)
+	data.read_txt()	
+	
+	if(only_lp == 1):
+		lp_img, lp_X, lp_Y = data.lp_img()
+		result_lp = Si.sighthound(dset + "_lp", dpath, name, IMG_FORMAT, lp_img)
+		rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
+		return sign_average(data, rectangle_lp, SIGNS_NUM)
 		
 	return sign_average(data, rectangle, SIGNS_NUM)
 	
 	
-def dataset_IoU_sight(path, dset):		#dset - SSIG or UFPR
+def dataset_IoU_sight(path, dset, only_lp):		#dset - SSIG or UFPR
 	res = 0
 	num = 0
 	for dirs,folder,files in os.walk(path):
@@ -106,9 +113,10 @@ def dataset_IoU_sight(path, dset):		#dset - SSIG or UFPR
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
 				print(name)
-				if(Path(dirs, name + ".png").exists() or Path(dirs, name + ".jpg").exists()):
+				if(Path(dirs, name + IMG_FORMAT).exists()):
 					
-					iou = calculate_IoU_sight(name, dset, dirs)
+					iou = calculate_IoU_sight(name, dset, dirs, only_lp)
+					print(iou)
 					
 					if iou != -1:
 						num = num + 1
@@ -121,11 +129,11 @@ def dataset_IoU_sight(path, dset):		#dset - SSIG or UFPR
 def main():
 	print("in process...")
 	
-	#calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1)
-	calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2)
+	print(calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1, 0))
+	#print(calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2, 1))
 	
-	#dataset_IoU_sight("../dataset1", "SSIG")
-	#dataset_IoU_sight("../dataset2", "UFPR")
+	#dataset_IoU_sight("../dataset1", "SSIG", 0)
+	#dataset_IoU_sight("../dataset2", "UFPR", 1)
 
 if __name__ == "__main__":
 	main()
