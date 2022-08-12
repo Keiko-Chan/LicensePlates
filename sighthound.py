@@ -7,12 +7,12 @@ import numpy as np
 from pathlib import Path
 import base64
 
-HEADERS = {"Content-type": "application/json", "X-Access-Token": "yHxNQWht4qeyrR1THlWTbY8XKvCB9gnI5Tut"}
+HEADERS = {"Content-type": "application/json", "X-Access-Token": "OPKV3fzYw0yuv6vTPhP1lAktdiDOFerLgQhj"}
 CONN = httplib.HTTPSConnection("dev.sighthoundapi.com", context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2))
 
-def sighthound(dset, dpath, name):
+def sighthound(dset, dpath, name, img_format, image_data):
 
-	res_path = Path('sightound_result_' + dset)
+	res_path = Path('sighthound_answ_' + dset)
 	
 	if(res_path.exists() == False):
 		res_path.mkdir()
@@ -20,7 +20,9 @@ def sighthound(dset, dpath, name):
 	res_path = Path(res_path, name + '.json')
 	
 	if(res_path.exists() == False):
-		image_data = base64.b64encode(open(Path(dpath, name + ".png"), "rb").read()).decode()
+		
+		if(type(image_data) == int):
+			image_data = base64.b64encode(open(Path(dpath, name + img_format), "rb").read()).decode()
 
 		params = json.dumps({"image": image_data})
 		CONN.request("POST", "/v1/recognition?objectType=licenseplate", params, HEADERS)
@@ -40,13 +42,19 @@ def sighthound(dset, dpath, name):
 			result = json.loads(file_content)
 			
 	if 'error' in result:
+	
+			print(name, "have an error:", result['error'])
+	
 			if result['error'] == "ERROR_OVER_THROTTLE":
+				#print(result)
 				os.remove(res_path)
-				result = sighthound(dset, dpath, name)
+				return sighthound(dset, dpath, name, img_format, image_data)
 				
-			else:
-				print(name, "have an error:", result['error'])
-				return -1
+			if result['error'] == "ERROR_USAGE":
+				os.remove(res_path)
+				return sighthound(dset, dpath, name, img_format, image_data)
+			
+			return -1
 		
 	return result
 	
@@ -75,7 +83,7 @@ def get_lp_signs(sight_res):
 	#print('founded number =', lp)
 	return lp		
 
-def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
+def read_sigh_res(sight_res, signes_num, move_X, move_Y):				#signes_num = 7 for brazil
 
 	obj = sight_res['objects']
 	lp_num = 0
@@ -86,20 +94,20 @@ def read_sigh_res(sight_res, signes_num):				#signes_num = 7 for brazil
 		if res_num == signes_num:
 			lp_num = i
 
-	rect = np.zeros((4, signes_num), int)				#X, Y, x, y
+	symbol_rectangles = np.zeros((4, signes_num), int)				#X, Y, x, y
 	
 	if(signes_num != res_num):
-		return rect
+		return symbol_rectangles
 
 	obj = obj[lp_num]['licenseplateAnnotation']['attributes']['system']['characters']			#[0]['bounding']['vertices'][0]
 
 	for k in range(0, signes_num):
-		rect[1][k] = obj[k]['bounding']['vertices'][0]['y']
-		rect[0][k] = obj[k]['bounding']['vertices'][0]['x']
-		rect[3][k] = obj[k]['bounding']['vertices'][2]['y'] - obj[k]['bounding']['vertices'][0]['y']
-		rect[2][k] = obj[k]['bounding']['vertices'][1]['x'] - obj[k]['bounding']['vertices'][0]['x']		
+		symbol_rectangles[1][k] = obj[k]['bounding']['vertices'][0]['y'] + move_Y
+		symbol_rectangles[0][k] = obj[k]['bounding']['vertices'][0]['x'] + move_X
+		symbol_rectangles[3][k] = obj[k]['bounding']['vertices'][2]['y'] - obj[k]['bounding']['vertices'][0]['y']
+		symbol_rectangles[2][k] = obj[k]['bounding']['vertices'][1]['x'] - obj[k]['bounding']['vertices'][0]['x']		
 
-	return rect
+	return symbol_rectangles
 
 
 def get_bin_matrix(sq, data, indx):
