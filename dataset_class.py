@@ -1,6 +1,7 @@
 import cv2 as cv
 from pathlib import Path
 import numpy as np
+import base64
 
 class Dataset:
 
@@ -10,23 +11,24 @@ class Dataset:
 	y = np.zeros(7, int)
 	
 	
-	def __init__(self, name_txt, name_img, path):
+	def __init__(self, name_txt, name_img, path, dset):
 		self.name_txt = name_txt
 		self.name_img = name_img
 		self.path = path
+		self.dset = dset
 		
-	def read_txt(self, dset):
+	def read_txt(self):
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
 		start = 0
 		end = 0
 		
-		if(dset == "SSIG"):
+		if(self.dset == "SSIG"):
 			start = 3
 			end = 10
 		
-		if(dset == "UFPR"):
+		if(self.dset == "UFPR"):
 			start = 8
 			end = 15
 		
@@ -57,14 +59,17 @@ class Dataset:
 					
 			#print(self.X, self.Y, self.x, self.y)
 			
-	def get_lp_number(self, dset):
+	def get_lp_number(self):
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
-		if(dset == "SSIG"):
+		if(self.dset == "SSIG"):
 			num_line = 0
-		if(dset == "UFPR"):
+		if(self.dset == "UFPR"):
 			num_line = 6
+		if(self.dset != "UFPR") and (self.dset != "SSIG"):
+			print("error: don`t know this dset")
+			return -1
 			
 		dots = lines[num_line].find(":")
 		
@@ -89,4 +94,51 @@ class Dataset:
 		#print(matrix)
 		return matrix
 		
+	def lp_img(self):
+	
+		f = open(str(Path(self.path, self.name_txt)), 'r')
+		lines = f.readlines()
+		
+		if(self.dset == "SSIG" or self.dset == "UFPR"):
+			num_line = 1
+		else:
+			print("error: dont know this dset")
+			return -1
+			
+		dots = lines[num_line].find(":")	
+		ind = 0
+		st = ''
+		slen = len(lines[num_line])
+		
+		for k in lines[num_line][dots:slen]:
+			if k == ' ':
+				if ind == 1:		
+					lp_X = int(st)
+				if ind == 2:
+					lp_Y = int(st)
+				if ind == 3:
+					lp_x = int(st)
+	
+				ind = ind + 1
+				st = ''
+					
+			if k.isdigit:
+				st = st + k
+					
+		lp_y = int(st)
+		
+		img = cv.imread(str(Path(self.path, self.name_img)))
+		
+		lp_img = img[lp_Y : lp_Y + lp_y, lp_X : lp_x + lp_X]
+		
+		#cv.imshow('sample image1',lp_img)
+		#cv.imshow('sample image2',img)
+		#cv.waitKey(0)
+		#cv.destroyAllWindows() #
+		
+		success, encoded_lp = cv.imencode('.png', lp_img)
+		lp_bytes = encoded_lp.tobytes()
+		lp_img = base64.b64encode(lp_bytes).decode()
+		
+		return lp_img, lp_X, lp_Y
 		
