@@ -84,55 +84,114 @@ def sign_average(data, rectangle, number):
 	
 def calculate_IoU_sight(name, dset, dpath, only_lp):					#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
 
-	result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
-	
-	if result == -1:
-		return -1
-	
-	#print("Detection Results = " + result )
-	rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0)
+	rectangle_lp = 0
+	rectangle = 0
+	iou = 0
+	iou_lp = 0
 	
 	data = Dat.Dataset(name + ".txt", name + IMG_FORMAT, dpath, dset)
-	data.read_txt()	
+	data.read_txt()
+
+	if(only_lp == 0 or only_lp == 2):
+
+		result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
 	
-	if(only_lp == 1):
+		if result == -1:
+			iou = -1
+		
+		#print("Detection Results = " + result )
+		rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0)	
+		
+		if(iou == 0):
+			iou = sign_average(data, rectangle, SIGNS_NUM)
+	
+	if(only_lp == 1 or only_lp == 2):
 		lp_img, lp_X, lp_Y = data.lp_img()
 		result_lp = Si.sighthound(dset + "_lp", dpath, name, IMG_FORMAT, lp_img)
-		rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
-		return sign_average(data, rectangle_lp, SIGNS_NUM)
 		
-	return sign_average(data, rectangle, SIGNS_NUM)
+		if result_lp == -1:
+			iou_lp = -1
+		
+		if len(result_lp['objects']) == 0 and only_lp > 0:
+			iou_lp = -1
+		
+		rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
+		
+		if(iou_lp == 0):
+			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM)
+		
+	if(only_lp == 2):
+		return iou, iou_lp
+		
+	if(only_lp == 1):
+		return iou_lp		
+		
+	if(only_lp == 0):
+		return iou
 	
 	
-def dataset_IoU_sight(path, dset, only_lp):		#dset - SSIG or UFPR
+def dataset_IoU_sight(path, dset, only_lp, strange_list = None):		#dset - SSIG or UFPR
 	res = 0
+	res_lp = 0
+	num_lp = 0
 	num = 0
+	iou = 0
+	iou_lp = 0
 	for dirs,folder,files in os.walk(path):
 		for i in range(0, len(files)):
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
-				print(name)
+
 				if(Path(dirs, name + IMG_FORMAT).exists()):
 					
-					iou = calculate_IoU_sight(name, dset, dirs, only_lp)
-					print(iou)
+					if(only_lp == 0):
+						iou = calculate_IoU_sight(name, dset, dirs, only_lp)
+						print(name, "similarity =", iou)
+					
+					if(only_lp == 1):
+						iou = calculate_IoU_sight(name, dset, dirs, only_lp)
+						print(name, "lp similarity =", iou)
+						
+					if(only_lp == 2):
+						iou, iou_lp = calculate_IoU_sight(name, dset, dirs, only_lp)
+						print(name, "similarity =", iou, "\nlp similarity =", iou_lp)
+						
+						if(strange_list is not None):
+							if(type(strange_list) == list and iou > lp_iou):
+								strange_list.append(name)	
 					
 					if iou != -1:
 						num = num + 1
 						res = res + iou
 					
+					if iou_lp != -1 and only_lp == 2:
+						num_lp = num_lp + 1
+						res_lp = res_lp + iou_lp
+						
+						if iou != -1:
+							num = num - 1
+							res = res - iou
+	
 	res = res / num
-	print(res)
-	return res
+					
+	if(only_lp == 2):
+		res_lp = res_lp / num_lp
+		print("result =", res, "\tlp =", res_lp)
+		return res, res_lp
+	
+	else:
+		
+		print("result =", res)
+		return res
 	
 def main():
 	print("in process...")
 	
-	print(calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1, 0))
+	#print(calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1, 0))
 	#print(calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2, 1))
 	
-	#dataset_IoU_sight("../dataset1", "SSIG", 0)
+	dataset_IoU_sight("../dataset1", "SSIG", 2)
 	#dataset_IoU_sight("../dataset2", "UFPR", 1)
 
 if __name__ == "__main__":
