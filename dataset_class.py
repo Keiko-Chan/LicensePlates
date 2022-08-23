@@ -94,8 +94,7 @@ class Dataset:
 		#print(matrix)
 		return matrix
 		
-	def lp_img(self):
-	
+	def get_lp_position(self):
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
@@ -126,6 +125,13 @@ class Dataset:
 				st = st + k
 					
 		lp_y = int(st)
+		
+		return lp_X, lp_Y, lp_x, lp_y
+		
+		
+	def lp_img(self):
+	
+		lp_X, lp_Y, lp_x, lp_y = self.get_lp_position()
 		
 		img = cv.imread(str(Path(self.path, self.name_img)))
 		
