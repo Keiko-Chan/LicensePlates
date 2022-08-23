@@ -83,7 +83,7 @@ def get_lp_signs(sight_res):
 	#print('founded number =', lp)
 	return lp		
 
-def read_sigh_res(sight_res, signes_num, move_X, move_Y):				#signes_num = 7 for brazil
+def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = None, lp_y = None):				#signes_num = 7 for brazil
 
 	obj = sight_res['objects']
 	lp_num = 0
