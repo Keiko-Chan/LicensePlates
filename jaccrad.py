@@ -5,8 +5,9 @@ import dataset_class as Dat
 from sklearn.metrics import jaccard_score
 import json
 import numpy as np
+import openalp_request as Op
 
-PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
+PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track10' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0091' )
 SIGNS_NUM = 7
 IMG_FORMAT  = '.png'
@@ -82,42 +83,65 @@ def sign_average(data, rectangle, number):
 	#print("average =", res, res1)
 	return res1
 	
-def calculate_IoU_sight(name, dset, dpath, only_lp):					#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
+def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
 
-	rectangle_lp = 0
-	rectangle = 0
-	iou = 0
-	iou_lp = 0
+	rectangle_lp = 1
+	rectangle = 1
+	iou = 1
+	iou_lp = 1
 	
 	data = Dat.Dataset(name + ".txt", name + IMG_FORMAT, dpath, dset)
 	data.read_txt()
 
 	if(only_lp == 0 or only_lp == 2):
 
-		result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
+		if(algorithm == "sighthound"):
+			result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
+		if(algorithm == "openalpr"):
+			result = Op.save_openalpr_res(dpath, name, IMG_FORMAT, 0)
 	
-		if result == -1:
-			iou = -1
+		#print(result)
+	
+		if result == -1 or result == 0:
+			iou = result
 		
-		#print("Detection Results = " + result )
-		rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0)	
+		else:
+			#print("Detection Results = " + result )
+			lp_pos = data.get_lp_position()
 		
-		if(iou == 0):
+			if(algorithm == "sighthound"):
+				rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
+			if(algorithm == "openalpr"):
+				points = Op.read_openalpr_res(result, SIGNS_NUM)
+				rectangle = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
+		
 			iou = sign_average(data, rectangle, SIGNS_NUM)
 	
 	if(only_lp == 1 or only_lp == 2):
 		lp_img, lp_X, lp_Y = data.lp_img()
-		result_lp = Si.sighthound(dset + "_lp", dpath, name, IMG_FORMAT, lp_img)
 		
-		if result_lp == -1:
-			iou_lp = -1
+		if(algorithm == "sighthound"):
+			result_lp = Si.sighthound(dset + "_lp", dpath, name, IMG_FORMAT, lp_img)
+		if(algorithm == "openalpr"):
+			result_lp = Op.save_openalpr_res(dpath, name, IMG_FORMAT, lp_img)
 		
-		if len(result_lp['objects']) == 0 and only_lp > 0:
-			iou_lp = -1
+		if result_lp == -1 or result_lp == 0:
+			iou_lp = result_lp
 		
-		rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
+		if(algorithm == "sighthound"):
+			if len(result_lp['objects']) == 0 and only_lp > 1:
+				iou_lp = -1
+		if(algorithm == "openalpr"):
+			if(result_lp == 0 and only_lp > 1):
+				iou_lp = -1
 		
-		if(iou_lp == 0):
+		if(iou_lp == 1):
+			if(algorithm == "sighthound"):
+				rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
+			if(algorithm == "openalpr"):
+				points_lp = Op.read_openalpr_res(result_lp, SIGNS_NUM)
+				rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
+		
 			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM)
 		
 	if(only_lp == 2):
@@ -130,48 +154,70 @@ def calculate_IoU_sight(name, dset, dpath, only_lp):					#only_lp == 0 -> all pi
 		return iou
 	
 	
-def dataset_IoU_sight(path, dset, only_lp, strange_list = None):		#dset - SSIG or UFPR
+def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
 	res = 0
 	res_lp = 0
 	num_lp = 0
 	num = 0
-	iou = 0
-	iou_lp = 0
+	trow_out = 0
+	new_remote_list = []
 	for dirs,folder,files in os.walk(path):
 		for i in range(0, len(files)):
+			iou = 0
+			iou_lp = 0
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
 
 				if(Path(dirs, name + IMG_FORMAT).exists()):
+				
+					if(remote_list is not None):
+						if name in remote_list:
+							iou = -1
+							iou_lp = -1
 					
-					if(only_lp == 0):
-						iou = calculate_IoU_sight(name, dset, dirs, only_lp)
+					if(only_lp == 0 and iou != -1):
+						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm)
 						print(name, "similarity =", iou)
 					
-					if(only_lp == 1):
-						iou = calculate_IoU_sight(name, dset, dirs, only_lp)
+					if(only_lp == 1 and iou != -1):
+						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm)
 						print(name, "lp similarity =", iou)
 						
-					if(only_lp == 2):
-						iou, iou_lp = calculate_IoU_sight(name, dset, dirs, only_lp)
+					if(only_lp == 2 and iou_lp != -1):
+						iou, iou_lp = calculate_IoU(name, dset, dirs, only_lp, algorithm)
 						print(name, "similarity =", iou, "\nlp similarity =", iou_lp)
 						
 						if(strange_list is not None):
-							if(type(strange_list) == list and iou > lp_iou):
+							if(type(strange_list) == list and iou_lp != -1 and iou > iou_lp):
 								strange_list.append(name)	
 					
 					if iou != -1:
 						num = num + 1
 						res = res + iou
+					else:
+						#num = num + 1
+						if(only_lp != 2):
+							trow_out = trow_out + 1
+							new_remote_list.append(name)
+							
 					
 					if iou_lp != -1 and only_lp == 2:
 						num_lp = num_lp + 1
 						res_lp = res_lp + iou_lp
+					else:
+						if(only_lp == 2):
+							trow_out = trow_out + 1
+							new_remote_list.append(name)
 						
-						if iou != -1:
-							num = num - 1
-							res = res - iou
+					if iou != -1 and iou_lp == -1 and only_lp == 2:
+						num = num - 1
+						res = res - iou
+						
+	print("trown out =", trow_out, "percent =", trow_out/(num + trow_out)*100)
+	
+	if(remote_list is not None):
+		remote_list.extend(new_remote_list)
 	
 	res = res / num
 					
@@ -188,11 +234,17 @@ def dataset_IoU_sight(path, dset, only_lp, strange_list = None):		#dset - SSIG o
 def main():
 	print("in process...")
 	
-	#print(calculate_IoU_sight("Track23[01]", "SSIG", PATH_TO_DATA1, 0))
-	#print(calculate_IoU_sight("track0091[01]", "UFPR", PATH_TO_DATA2, 1))
+	#print(calculate_IoU("Track10[03]", "SSIG", PATH_TO_DATA1, 1, "openalpr"))
+	#print(calculate_IoU("track0091[01]", "UFPR", PATH_TO_DATA2, 1))
 	
-	dataset_IoU_sight("../dataset1", "SSIG", 2)
-	#dataset_IoU_sight("../dataset2", "UFPR", 1)
+	list1 = []
+	
+	dataset_IoU_sight("../dataset1", "SSIG", 2, "sighthound", list1)
+	print(list1, len(list1))
+	#print(list1, len(list1))
+	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr")
+	
+	#Op.save_openalpr_res(PATH_TO_DATA2, "track0091[01].png")
 
 if __name__ == "__main__":
 	main()
