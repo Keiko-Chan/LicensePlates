@@ -93,8 +93,8 @@ def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):			
 
 	for i in range(0, len(obj)):
 		num = get_number_of_signs(str(obj[i]))
-		x = obj[lp_num]['licenseplateAnnotation']['bounding']['vertices'][0]['x']
-		y = obj[lp_num]['licenseplateAnnotation']['bounding']['vertices'][0]['y']
+		x = obj[i]['licenseplateAnnotation']['bounding']['vertices'][0]['x']
+		y = obj[i]['licenseplateAnnotation']['bounding']['vertices'][0]['y']
 		#print(x, y)
 		if num == signes_num and abs(lp_x - x) < x_pos_lp and abs(lp_y - y) < y_pos_lp:
 			lp_num = i
@@ -103,7 +103,7 @@ def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):			
 			y_pos_lp = abs(lp_y - y)
 			
 	symbol_rectangles = np.zeros((4, signes_num), int)				#X, Y, x, y
-	
+
 	if(signes_num != res_num):
 		return symbol_rectangles
 
