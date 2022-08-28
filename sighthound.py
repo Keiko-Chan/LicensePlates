@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 import base64
 
-HEADERS = {"Content-type": "application/json", "X-Access-Token": "OPKV3fzYw0yuv6vTPhP1lAktdiDOFerLgQhj"}
+HEADERS = {"Content-type": "application/json", "X-Access-Token": "yHxNQWht4qeyrR1THlWTbY8XKvCB9gnI5Tut"}
 CONN = httplib.HTTPSConnection("dev.sighthoundapi.com", context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2))
 
 def sighthound(dset, dpath, name, img_format, image_data):
@@ -83,17 +83,25 @@ def get_lp_signs(sight_res):
 	#print('founded number =', lp)
 	return lp		
 
-def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = None, lp_y = None):				#signes_num = 7 for brazil
+def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):				#signes_num = 7 for brazil
 
 	obj = sight_res['objects']
 	lp_num = 0
 	res_num = 0
+	x_pos_lp = int(sight_res['image']['width'])
+	y_pos_lp = int(sight_res['image']['height'])
 
 	for i in range(0, len(obj)):
-		res_num = get_number_of_signs(str(obj[i]))
-		if res_num == signes_num:
+		num = get_number_of_signs(str(obj[i]))
+		x = obj[lp_num]['licenseplateAnnotation']['bounding']['vertices'][0]['x']
+		y = obj[lp_num]['licenseplateAnnotation']['bounding']['vertices'][0]['y']
+		#print(x, y)
+		if num == signes_num and abs(lp_x - x) < x_pos_lp and abs(lp_y - y) < y_pos_lp:
 			lp_num = i
-
+			res_num = num
+			x_pos_lp = abs(lp_x - x)
+			y_pos_lp = abs(lp_y - y)
+			
 	symbol_rectangles = np.zeros((4, signes_num), int)				#X, Y, x, y
 	
 	if(signes_num != res_num):
