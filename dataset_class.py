@@ -98,9 +98,12 @@ class Dataset:
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
-		if(self.dset == "SSIG" or self.dset == "UFPR"):
+		if(self.dset == "SSIG"):
 			num_line = 1
-		else:
+		if(self.dset == "UFPR"):
+			num_line = 7
+			
+		if(self.dset != "SSIG" and self.dset != "UFPR"):
 			print("error: dont know this dset")
 			return -1
 			
@@ -110,13 +113,15 @@ class Dataset:
 		slen = len(lines[num_line])
 		
 		for k in lines[num_line][dots:slen]:
-			if k == ' ':
+			if k == ' ' or k == '\n':
 				if ind == 1:		
 					lp_X = int(st)
 				if ind == 2:
 					lp_Y = int(st)
 				if ind == 3:
 					lp_x = int(st)
+				if ind == 4:
+					lp_y = int(st)
 	
 				ind = ind + 1
 				st = ''
@@ -124,7 +129,9 @@ class Dataset:
 			if k.isdigit:
 				st = st + k
 					
-		lp_y = int(st)
+		#lp_y = int(st)
+		
+		#print(lp_X, lp_Y, lp_x, lp_y)
 		
 		return lp_X, lp_Y, lp_x, lp_y
 		
@@ -140,7 +147,7 @@ class Dataset:
 		#cv.imshow('sample image1',lp_img)
 		#cv.imshow('sample image2',img)
 		#cv.waitKey(0)
-		#cv.destroyAllWindows() #
+		#cv.destroyAllWindows() 
 		
 		success, encoded_lp = cv.imencode('.png', lp_img)
 		lp_bytes = encoded_lp.tobytes()
