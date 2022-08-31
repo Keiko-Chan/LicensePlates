@@ -7,8 +7,8 @@ import json
 import numpy as np
 import openalp_request as Op
 
-PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track10' )
-PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0091' )
+PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track02' )
+PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0135' )
 SIGNS_NUM = 7
 IMG_FORMAT  = '.png'
 
@@ -48,6 +48,8 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 		y2 = rect[3][indx]
 		Y1 = data.Y[indx]
 		y1 = data.y[indx]
+	
+	#print(X1, x1, X2)
 		
 	if(X1 + x1 < X2):
 		return 0
@@ -68,10 +70,14 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 	res = a * b / (rect[3][indx] * rect[2][indx] + data.y[indx] * data.x[indx] - a * b)
 	
 	#print(indx + 1, "similarity1 =", res)
+	
+	#if(res < 0.6):
+		#print("here something")
 
 	return res
 	
 def sign_average(data, rectangle, number):
+	#print(rectangle)
 	#res = 0
 	res1 = 0
 	for  sign_index in range(0, number):
@@ -153,7 +159,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 	if(only_lp == 0):
 		return iou
 	
-	
+#strange_list - list of names when iou_lp < iou (только для номера < для целой картинки)
 def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
 	res = 0
 	res_lp = 0
@@ -168,7 +174,7 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
-
+				#print(name)
 				if(Path(dirs, name + IMG_FORMAT).exists()):
 				
 					if(remote_list is not None):
@@ -219,10 +225,12 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange
 	if(remote_list is not None):
 		remote_list.extend(new_remote_list)
 	
-	res = res / num
+	if(num != 0):
+		res = res / num
 					
 	if(only_lp == 2):
-		res_lp = res_lp / num_lp
+		if(num_lp != 0):
+			res_lp = res_lp / num_lp
 		print("result =", res, "\tlp =", res_lp)
 		return res, res_lp
 	
@@ -234,17 +242,16 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange
 def main():
 	print("in process...")
 	
-	#print(calculate_IoU("Track10[03]", "SSIG", PATH_TO_DATA1, 1, "openalpr"))
-	#print(calculate_IoU("track0091[01]", "UFPR", PATH_TO_DATA2, 1))
+	#print(calculate_IoU("Track2[08]", "SSIG", PATH_TO_DATA1, 0, "sighthound"))
+	#print(calculate_IoU("track0135[23]", "UFPR", PATH_TO_DATA2, 0, "sighthound"))
 	
 	list1 = []
 	
-	dataset_IoU_sight("../dataset1", "SSIG", 2, "sighthound", list1)
-	print(list1, len(list1))
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track14", "SSIG", 1, "openalpr", list1)
 	#print(list1, len(list1))
-	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr")
-	
-	#Op.save_openalpr_res(PATH_TO_DATA2, "track0091[01].png")
+	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr", list1)
+	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
+	#dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0122", "UFPR", 1, "sighthound")
 
 if __name__ == "__main__":
 	main()
