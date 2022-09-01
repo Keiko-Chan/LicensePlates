@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 import base64
 
-HEADERS = {"Content-type": "application/json", "X-Access-Token": "yHxNQWht4qeyrR1THlWTbY8XKvCB9gnI5Tut"}
+HEADERS = {"Content-type": "application/json", "X-Access-Token": "Your token"}
 CONN = httplib.HTTPSConnection("dev.sighthoundapi.com", context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2))
 
 def sighthound(dset, dpath, name, img_format, image_data):
