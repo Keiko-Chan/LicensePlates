@@ -1,11 +1,14 @@
 # How to use it #
 ---
 ## changes in sighthound.py ##
+
 In this line you can see X-Access-Token:
 		HEADERS = {"Content-type": "application/json", "X-Access-Token": "Your token"}
 You need to register on the sighthound site and enter your token here "Your token".
+
 ---
 ## using ##
+
 Use this function from jaccard.py
 		dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange_list = None)
 * path - path to dataset
@@ -14,8 +17,10 @@ Use this function from jaccard.py
 * algorithm - sighthound or openalpr
 * remote_list - list of names of numbers to be removed and which were removed
 * strange_list - list of names of lp, which iou for whole image was more than for only lp. Work only with only_lp = 2
+
 ---
 ## if you have another dataset ##
+
 Need changes in dataset_class.py.
 * in function get_lp_position(self), 'num_line' - line with lp position (like that: 'position_plate: 1390 782 145 49') 
 		if(self.dset == "SSIG"):
@@ -33,8 +38,10 @@ Need changes in dataset_class.py.
 Need change the country of lp in openalpr_request.py
 Need change of count of signs in jaccard.py:
 		SIGNS_NUM = 7
+		
 ---
 ## changes in openalpr ##
+
 I changed main.cpp file, to save opeanlpr results about license plate (most probable and first from them) segmentation. You can see it below.
 Pay attention to this line:
 		const std::string MY_PATH = "/home/ekatrina/prog/License plates/LicensePlates/openalpr_res" ;
