@@ -89,8 +89,8 @@ def sign_average(data, rectangle, number):
 	#print("average =", res, res1)
 	return res1
 	
-def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
-
+def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
+												#cut - 'lp' or 'car'
 	rectangle_lp = 1
 	rectangle = 1
 	iou = 1
@@ -98,6 +98,8 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 	
 	data = Dat.Dataset(name + ".txt", name + IMG_FORMAT, dpath, dset)
 	data.read_txt()
+	
+	lp_pos = data.get_lp_position()
 
 	if(only_lp == 0 or only_lp == 2):
 
@@ -113,8 +115,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 		
 		else:
 			#print("Detection Results = " + result )
-			lp_pos = data.get_lp_position()
-		
+			
 			if(algorithm == "sighthound"):
 				rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
 			if(algorithm == "openalpr"):
@@ -124,12 +125,12 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 			iou = sign_average(data, rectangle, SIGNS_NUM)
 	
 	if(only_lp == 1 or only_lp == 2):
-		lp_img, lp_X, lp_Y = data.lp_img()
+		cut_img, lp_X, lp_Y = data.cut_img(cut)
 		
 		if(algorithm == "sighthound"):
-			result_lp = Si.sighthound(dset + "_lp", dpath, name, IMG_FORMAT, lp_img)
+			result_lp = Si.sighthound(dset + '_' + cut, dpath, name, IMG_FORMAT, cut_img)
 		if(algorithm == "openalpr"):
-			result_lp = Op.save_openalpr_res(dpath, name, IMG_FORMAT, lp_img)
+			result_lp = Op.save_openalpr_res(dpath, name, IMG_FORMAT, cut_img, cut)
 		
 		if result_lp == -1 or result_lp == 0:
 			iou_lp = result_lp
@@ -143,7 +144,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 		
 		if(iou_lp == 1):
 			if(algorithm == "sighthound"):
-				rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y)
+				rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
 			if(algorithm == "openalpr"):
 				points_lp = Op.read_openalpr_res(result_lp, SIGNS_NUM)
 				rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
@@ -160,7 +161,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm):					#only_lp == 0 -> a
 		return iou
 	
 #strange_list - list of names when iou_lp < iou (только для номера < для целой картинки)
-def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
+def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 'lp', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
 	res = 0
 	res_lp = 0
 	num_lp = 0
@@ -187,11 +188,11 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange
 						print(name, "similarity =", iou)
 					
 					if(only_lp == 1 and iou != -1):
-						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm)
+						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut)
 						print(name, "lp similarity =", iou)
 						
 					if(only_lp == 2 and iou_lp != -1):
-						iou, iou_lp = calculate_IoU(name, dset, dirs, only_lp, algorithm)
+						iou, iou_lp = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut)
 						print(name, "similarity =", iou, "\nlp similarity =", iou_lp)
 						
 						if(strange_list is not None):
@@ -242,16 +243,12 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None,strange
 def main():
 	print("in process...")
 	
-	#print(calculate_IoU("Track2[08]", "SSIG", PATH_TO_DATA1, 0, "sighthound"))
-	#print(calculate_IoU("track0135[23]", "UFPR", PATH_TO_DATA2, 0, "sighthound"))
-	
 	list1 = []
 	
-	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track14", "SSIG", 1, "openalpr", list1)
-	#print(list1, len(list1))
-	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr", list1)
-	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
-	#dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0122", "UFPR", 1, "sighthound")
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
+	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr", list1, "car")
+	#dataset_IoU_sight("../dataset2", "UFPR", 1, "sighthound", list1, "car")
+	#dataset_IoU_sight("../dataset1", "SSIG", 1, "sighthound", list1)
 
 if __name__ == "__main__":
 	main()
