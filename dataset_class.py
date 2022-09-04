@@ -94,14 +94,17 @@ class Dataset:
 		#print(matrix)
 		return matrix
 		
-	def get_lp_position(self):
+	def get_lp_position(self, obg = 0):								#obg = 0 - license plate, obg = 1 - car
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
 		if(self.dset == "SSIG"):
 			num_line = 1
 		if(self.dset == "UFPR"):
-			num_line = 7
+			if(obg == 1):
+				num_line = 1
+			if(obg == 0):
+				num_line = 7
 			
 		if(self.dset != "SSIG" and self.dset != "UFPR"):
 			print("error: dont know this dset")
@@ -136,9 +139,12 @@ class Dataset:
 		return lp_X, lp_Y, lp_x, lp_y
 		
 		
-	def lp_img(self):
+	def cut_img(self, cut):
 	
-		lp_X, lp_Y, lp_x, lp_y = self.get_lp_position()
+		if(cut == 'lp'):
+			lp_X, lp_Y, lp_x, lp_y = self.get_lp_position()
+		if(cut == 'car'):
+			lp_X, lp_Y, lp_x, lp_y = self.get_lp_position(1)
 		
 		img = cv.imread(str(Path(self.path, self.name_img)))
 		
