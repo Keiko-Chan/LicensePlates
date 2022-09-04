@@ -83,7 +83,7 @@ def get_lp_signs(sight_res):
 	#print('founded number =', lp)
 	return lp		
 
-def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):				#signes_num = 7 for brazil
+def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):					#signes_num = 7 for brazil
 
 	obj = sight_res['objects']
 	lp_num = 0
@@ -99,10 +99,10 @@ def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):			
 		if num == signes_num and abs(lp_x - x) < x_pos_lp and abs(lp_y - y) < y_pos_lp:
 			lp_num = i
 			res_num = num
-			x_pos_lp = abs(lp_x - x)
-			y_pos_lp = abs(lp_y - y)
+			x_pos_lp = abs(lp_x - move_X - x)
+			y_pos_lp = abs(lp_y - move_Y - y)
 			
-	symbol_rectangles = np.zeros((4, signes_num), int)				#X, Y, x, y
+	symbol_rectangles = np.zeros((4, signes_num), int)							#X, Y, x, y
 
 	if(signes_num != res_num):
 		return symbol_rectangles
