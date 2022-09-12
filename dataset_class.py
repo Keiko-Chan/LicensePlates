@@ -16,6 +16,7 @@ class Dataset:
 		self.name_img = name_img
 		self.path = path
 		self.dset = dset
+		self.typ = "car"
 		
 	def read_txt(self):
 		f = open(str(Path(self.path, self.name_txt)), 'r')
@@ -31,6 +32,7 @@ class Dataset:
 		if(self.dset == "UFPR"):
 			start = 8
 			end = 15
+			typ_l = 2 
 		
 		for i in range(start, end):
 			#print(lines[i])
@@ -56,6 +58,12 @@ class Dataset:
 					st = st + k
 					
 			self.y[i - start] = int(st)
+			
+		if(self.dset == "UFPR"):
+			dots = lines[typ_l].find(":")
+			slen = len(lines[typ_l])
+			
+			self.typ = lines[typ_l][dots + 2:slen - 1]
 					
 			#print(self.X, self.Y, self.x, self.y)
 			
