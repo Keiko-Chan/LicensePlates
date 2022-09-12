@@ -88,6 +88,39 @@ def sign_average(data, rectangle, number):
 	res1 = res1 / SIGNS_NUM
 	#print("average =", res, res1)
 	return res1
+
+def br_motobike_sort(rectangles, signes_num):
+	sort_rectangles = np.zeros((4, signes_num), int)
+	st = 1
+	en = 1
+	
+	for i in range(0, 4):
+		sort_rectangles[i][0] = rectangles[i][0]
+	
+	for i in range(1, signes_num):
+		if(abs(sort_rectangles[1][st - 1] - rectangles[1][i]) > abs(sort_rectangles[0][st - 1] - rectangles[0][i])):
+			for k in range(0, 4):
+				sort_rectangles[k][signes_num - en] = rectangles[k][i]
+			en = en + 1
+		else:
+			for k in range(0, 4):
+				sort_rectangles[k][st] = rectangles[k][i]
+			st = st + 1
+	if(sort_rectangles[1][0] > sort_rectangles[1][signes_num - 1]):
+		sorted_rectangles = np.zeros((4, signes_num), int)
+		
+		for i in range(0, 3):
+			for k in range(0, 4):
+				sorted_rectangles[k][i] = sort_rectangles[k][4 + i]
+
+		for i in range(3, signes_num):
+			for k in range(0, 4):
+				sorted_rectangles[k][i] = sort_rectangles[k][i - 3]
+		
+		return sorted_rectangles
+		
+	return sort_rectangles
+	
 	
 def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
 												#cut - 'lp' or 'car'
@@ -118,6 +151,9 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_l
 			
 			if(algorithm == "sighthound"):
 				rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
+				if(data.typ == "motorcycle"):
+					rectangle = br_motobike_sort(rectangle, SIGNS_NUM)
+				
 			if(algorithm == "openalpr"):
 				points = Op.read_openalpr_res(result, SIGNS_NUM)
 				rectangle = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
@@ -145,6 +181,9 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_l
 		if(iou_lp == 1):
 			if(algorithm == "sighthound"):
 				rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
+				if(data.typ == "motorcycle"):
+					rectangle_lp = br_motobike_sort(rectangle_lp, SIGNS_NUM)
+					
 			if(algorithm == "openalpr"):
 				points_lp = Op.read_openalpr_res(result_lp, SIGNS_NUM)
 				rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
@@ -245,10 +284,10 @@ def main():
 	
 	list1 = []
 	
-	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
+	#dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
 	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr", list1, "car")
-	#dataset_IoU_sight("../dataset2", "UFPR", 1, "sighthound", list1, "car")
-	#dataset_IoU_sight("../dataset1", "SSIG", 1, "sighthound", list1)
+	dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0122", "UFPR", 0, "sighthound", list1)
+	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
 
 if __name__ == "__main__":
 	main()
