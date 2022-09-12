@@ -10,7 +10,7 @@ import cv2 as cv
 #PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
 #results = alpr.recognize_file(str(Path(PATH_TO_DATA1, "Track23[03].png")))
 
-def save_openalpr_res(path, name, img_format, image_data):
+def save_openalpr_res(path, name, img_format, image_data, cut = 0):
 	#print(str(Path(path, img_name)))
 	
 	res_path = Path('openalpr_res')
@@ -25,14 +25,14 @@ def save_openalpr_res(path, name, img_format, image_data):
 			subprocess.run(["alpr" , '-c' , 'br', str(Path(path, (name + img_format)))])
 	
 	else:
-		res_path = Path(res_path, name + '_lp' + '.json')
+		res_path = Path(res_path, name + '_' + cut + '.json')
 		
 		if(res_path.exists() == False):
 			im_bytes = base64.b64decode(image_data)
 			im_arr = np.frombuffer(im_bytes, dtype=np.uint8)  # im_arr is one-dim Numpy array
 			img = cv.imdecode(im_arr, flags=cv.IMREAD_COLOR)
 			
-			img_path = str(Path('openalpr_res', name + '_lp' + img_format))
+			img_path = str(Path('openalpr_res', name + '_' + cut + img_format))
 			cv.imwrite(img_path, cv.cvtColor(img, cv.COLOR_RGB2BGR)) 
 			
 			#cv.imshow("written", img)
