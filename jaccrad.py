@@ -6,11 +6,14 @@ from sklearn.metrics import jaccard_score
 import json
 import numpy as np
 import openalp_request as Op
+import marina_seg as Ma
 
 PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track02' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0135' )
 SIGNS_NUM = 7
 IMG_FORMAT  = '.png'
+MARINA_RES_PATH = Path('..', '..', 'svn', 'trunk', 'launch', 'r26041_20220920_170241_brazilian') 
+MARINA_RES_PATH_LP = Path('..', '..', 'svn', 'trunk', 'launch', 'r26041_20220927_120613_brazilian')
 
 def jaccard_res(rect, data, index):
 
@@ -122,7 +125,7 @@ def br_motobike_sort(rectangles, signes_num):
 	return sort_rectangles
 	
 	
-def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
+def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'):		#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
 												#cut - 'lp' or 'car'
 	rectangle_lp = 1
 	rectangle = 1
@@ -133,13 +136,45 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_l
 	data.read_txt()
 	
 	lp_pos = data.get_lp_position()
-
+	
+	match typ:
+		case "car":
+			if(data.typ != "car"):
+				if(only_lp == 2):
+					return -1, -1
+				else:
+					return -1
+		case "motorcycle":
+			if(data.typ != "motorcycle"):
+				if(only_lp == 2):
+					return -1, -1
+				else:
+					return -1
+		
+		
 	if(only_lp == 0 or only_lp == 2):
 
-		if(algorithm == "sighthound"):
-			result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
-		if(algorithm == "openalpr"):
-			result = Op.save_openalpr_res(dpath, name, IMG_FORMAT, 0)
+		match algorithm:
+			case "sighthound":
+				result = Si.sighthound(dset, dpath, name, IMG_FORMAT, 0)
+			case "openalpr":
+				result = Op.save_openalpr_res(dpath, name, IMG_FORMAT, 0)
+			case "marina":
+				match dset:
+					case "UFPR":
+						mar_res_path_dset = Path(MARINA_RES_PATH, "brazilian_ufpr-alpr_testing")
+					case "SSIG":
+						mar_res_path_dset = Path(MARINA_RES_PATH, "brazilian_ssig-plate_testing")
+					case _:
+						return -2
+						
+				result = Ma.get_marina_res(dset, name, IMG_FORMAT, mar_res_path_dset)
+			case _:
+				print("don`t know this algorithm", algorithm)
+				if(only_lp == 2):
+					return -2, -2
+				else:
+					return -2
 	
 		#print(result)
 	
@@ -149,58 +184,90 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp'):				#only_l
 		else:
 			#print("Detection Results = " + result )
 			
-			if(algorithm == "sighthound"):
-				rectangle = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
-				if(data.typ == "motorcycle"):
-					rectangle = br_motobike_sort(rectangle, SIGNS_NUM)
+			match algorithm:
+				case "sighthound":
+					rectangles = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
+					if(data.typ == "motorcycle"):
+						rectangles = br_motobike_sort(rectangles, SIGNS_NUM)
+						#print(rectangle)
 				
-			if(algorithm == "openalpr"):
-				points = Op.read_openalpr_res(result, SIGNS_NUM)
-				rectangle = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
+				case "openalpr":
+					points = Op.read_openalpr_res(result, SIGNS_NUM)
+					rectangles = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
+				
+				case "marina":
+					rectangles = Ma.read_marina_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
+					#print(rectangles)
+					#to do if rejected or something like that
 		
-			iou = sign_average(data, rectangle, SIGNS_NUM)
+			iou = sign_average(data, rectangles, SIGNS_NUM)
 	
 	if(only_lp == 1 or only_lp == 2):
 		cut_img, lp_X, lp_Y = data.cut_img(cut)
 		
-		if(algorithm == "sighthound"):
-			result_lp = Si.sighthound(dset + '_' + cut, dpath, name, IMG_FORMAT, cut_img)
-		if(algorithm == "openalpr"):
-			result_lp = Op.save_openalpr_res(dpath, name, IMG_FORMAT, cut_img, cut)
 		
-		if result_lp == -1 or result_lp == 0:
+		match algorithm:
+			case "sighthound":
+				result_lp = Si.sighthound(dset + '_' + cut, dpath, name, IMG_FORMAT, cut_img)
+				
+				if(len(result_lp['objects']) == 0 and only_lp == 2):
+					iou_lp = -1
+					
+			case "openalpr":
+				result_lp = Op.save_openalpr_res(dpath, name, IMG_FORMAT, cut_img, cut)
+				
+				if(result_lp == 0 and only_lp == 2):
+					iou_lp = -1
+					
+			case "marina":
+				case "UFPR":
+					mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ufpr-alpr_testing")
+				case "SSIG":
+					mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ssig-plate_testing")
+				case _:
+					return -2
+				result_lp = Ma.get_marina_res(dset, name, IMG_FORMAT, mar_res_path_dset)
+				
+				if(Ma.founded == False and only_lp == 2)
+					iou_lp = -1
+				
+			case _:
+				print("don`t know this algorithm", algorithm)
+				if(only_lp == 2):
+					return -2, -2
+				else:
+					return -2
+		
+		if (result_lp == -1 or result_lp == 0) and iou_lp != -1:
 			iou_lp = result_lp
 		
-		if(algorithm == "sighthound"):
-			if len(result_lp['objects']) == 0 and only_lp > 1:
-				iou_lp = -1
-		if(algorithm == "openalpr"):
-			if(result_lp == 0 and only_lp > 1):
-				iou_lp = -1
 		
 		if(iou_lp == 1):
-			if(algorithm == "sighthound"):
-				rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
-				if(data.typ == "motorcycle"):
-					rectangle_lp = br_motobike_sort(rectangle_lp, SIGNS_NUM)
+			match algorithm:
+				case "sighthound":
+					rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
+					if(data.typ == "motorcycle"):
+						rectangle_lp = br_motobike_sort(rectangle_lp, SIGNS_NUM)
 					
-			if(algorithm == "openalpr"):
-				points_lp = Op.read_openalpr_res(result_lp, SIGNS_NUM)
-				rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
+				case "openalpr":
+					points_lp = Op.read_openalpr_res(result_lp, SIGNS_NUM)
+					rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
+				
+				case "marina":
+					rectangles = Ma.read_marina_res(result, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
 		
 			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM)
 		
-	if(only_lp == 2):
-		return iou, iou_lp
-		
-	if(only_lp == 1):
-		return iou_lp		
-		
-	if(only_lp == 0):
-		return iou
+	match only_lp:
+		case 2:
+			return iou, iou_lp
+		case 1:
+			return iou_lp
+		case 0:
+			return iou
 	
 #strange_list - list of names when iou_lp < iou (только для номера < для целой картинки)
-def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 'lp', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
+def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 'lp', typ = 'all', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
 	res = 0
 	res_lp = 0
 	num_lp = 0
@@ -222,21 +289,26 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 
 							iou = -1
 							iou_lp = -1
 					
-					if(only_lp == 0 and iou != -1):
-						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm)
-						print(name, "similarity =", iou)
+					if(iou != -1):
+						match only_lp:
+							case 0:
+								iou = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut, typ)
+								print(name, "similarity =", iou)
 					
-					if(only_lp == 1 and iou != -1):
-						iou = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut)
-						print(name, "lp similarity =", iou)
+							case 1:
+								iou = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut, typ)
+								print(name, "lp similarity =", iou)
 						
-					if(only_lp == 2 and iou_lp != -1):
-						iou, iou_lp = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut)
-						print(name, "similarity =", iou, "\nlp similarity =", iou_lp)
+							case 2:
+								iou, iou_lp = calculate_IoU(name, dset, dirs, only_lp, algorithm, cut, typ)
+								print(name, "similarity =", iou, "\nlp similarity =", iou_lp)
 						
-						if(strange_list is not None):
-							if(type(strange_list) == list and iou_lp != -1 and iou > iou_lp):
-								strange_list.append(name)	
+								if(strange_list is not None):
+									if(type(strange_list) == list and iou_lp != -1 and iou > iou_lp):
+										strange_list.append(name)
+							case _:
+								print("only_lp can`t be", only_lp)
+								return -1
 					
 					if iou != -1:
 						num = num + 1
@@ -267,6 +339,7 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 
 	
 	if(num != 0):
 		res = res / num
+		
 					
 	if(only_lp == 2):
 		if(num_lp != 0):
@@ -285,8 +358,10 @@ def main():
 	list1 = []
 	
 	#dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
-	#dataset_IoU_sight("../dataset2", "UFPR", 2, "openalpr", list1, "car")
-	dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0122", "UFPR", 0, "sighthound", list1)
+	#dataset_IoU_sight("../dataset2", "UFPR", 2, "sighthound", list1, "lp", "car")
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track39", "SSIG", 0, "marina", list1)
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track39", "SSIG", 0, "openalpr", list1)
+	#dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0135", "UFPR", 0, "sighthound", list1, "lp", "all")
 	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
 
 if __name__ == "__main__":
