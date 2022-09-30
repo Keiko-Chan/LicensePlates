@@ -1,6 +1,7 @@
 import json
 import numpy as np
 from pathlib import Path
+from matplotlib import path as fig
 
 import sys
 sys.path.append('../../svn/trunk/prj.scripts/test/geometry/projective')
@@ -33,14 +34,18 @@ def proj_matrix(frame):
 
 def points_transform(cell, prj_matrix):
 	point1 = np.array([cell[0], cell[1]])
+	point2 = np.array([cell[0], cell[1] + cell[3]])
+	point3 = np.array([cell[0] + cell[2], cell[1]])
 	point4 = np.array([cell[0] + cell[2], cell[1] + cell[3]])
 
 	new_point1 = In.projective_transform_point(point1, prj_matrix)
+	new_point2 = In.projective_transform_point(point2, prj_matrix)
+	new_point3 = In.projective_transform_point(point3, prj_matrix)
 	new_point4 = In.projective_transform_point(point4, prj_matrix)
 	
-	return new_point1, new_point4
+	return new_point1, new_point2, new_point3, new_point4
 
-def founded(mar_res)
+def founded(mar_res):
 	obj = mar_res['plates']
 	
 	for i in range(0, len(obj)):
@@ -51,31 +56,21 @@ def founded(mar_res)
 	return False
 	
 	
-def read_marina_res(mar_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):
+def read_marina_res(mar_res, signes_num, lp_x = 0, lp_y = 0):
 	obj = mar_res['plates']
 	lp_num = 0
-	x_pos_lp = 4000
-	y_pos_lp = 4000
 	
 	for i in range(0, len(obj)):
-		x = obj[i]['rect'][0]
-		y = obj[i]['rect'][1]
 		rej = obj[i]['rejected']
 		#print(x, y)
 		if rej == False:										##to do check also position
 			lp_num = i
-			x_pos_lp = abs(lp_x - move_X - x)
-			y_pos_lp = abs(lp_y - move_Y - y)
 			
 	symbol_rectangles = np.zeros((4, signes_num), int)							#X, Y, x, y
 
 	##if regected return -1 ?
 	
 	frame = obj[lp_num]["frame"]
-	
-	x = obj[lp_num]['rect'][0]
-	y = obj[lp_num]['rect'][1]
-
 
 	if "fields" in obj[lp_num]:
 		obj = obj[lp_num]["fields"]['number']['cells']
@@ -85,12 +80,61 @@ def read_marina_res(mar_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):
 	prj_matrix = proj_matrix(frame)
 	
 	for k in range(0, signes_num):
-		point1, point4 = points_transform(obj[k], prj_matrix)
+		points = points_transform(obj[k], prj_matrix)
 		
-		symbol_rectangles[1][k] = point1[1] + move_Y
-		symbol_rectangles[0][k] = point1[0] + move_X
-		symbol_rectangles[3][k] = point4[1] - point1[1]
-		symbol_rectangles[2][k] = point4[0] - point1[0]		
+		symbol_rectangles[1][k] = points[0][1]
+		symbol_rectangles[0][k] = points[0][0]
+		symbol_rectangles[3][k] = points[3][1] - points[0][1]
+		symbol_rectangles[2][k] = points[3][0] - points[0][0]		
 
 	return symbol_rectangles
 	
+
+def get_points(mar_res, signes_num):
+	obj = mar_res['plates']
+	lp_num = 0
+
+	for i in range(0, len(obj)):
+		rej = obj[i]['rejected']
+		#print(x, y)
+		if rej == False:				
+			lp_num = i
+			
+	points = np.zeros((signes_num, 4, 2), int)
+
+	##if regected return -1 ?
+	
+	frame = obj[lp_num]["frame"]
+
+	if "fields" in obj[lp_num]:
+		obj = obj[lp_num]["fields"]['number']['cells']
+	else: 
+		return points
+		
+	prj_matrix = proj_matrix(frame)
+	
+	for k in range(0, signes_num):
+		point_4 = points_transform(obj[k], prj_matrix)
+		for j  in range(0, 4):
+			points[k][j] = point_4[j]		
+
+	return points
+
+
+def get_binary_matrix(points_4, y_img, x_img):
+	
+	matrix = np.zeros((y_img, x_img))
+	p = fig.Path([points_4[0], points_4[1], points_4[3], points_4[2]])
+	
+	min_x = min(points_4[0][0], points_4[1][0], points_4[2][0], points_4[3][0])
+	max_x = max(points_4[0][0], points_4[1][0], points_4[2][0], points_4[3][0])
+	min_y = min(points_4[0][1], points_4[1][1], points_4[2][1], points_4[3][1])
+	max_y = max(points_4[0][1], points_4[1][1], points_4[2][1], points_4[3][1])
+	
+	for i in range(min_x - 1, max_x + 1):
+		for j in range(min_y - 1, max_y + 1):
+ 			if(p.contains_points([(i, j)])):
+ 				matrix[y_img - 1 - j][i] = 1
+ 				
+	return matrix
+ 	
