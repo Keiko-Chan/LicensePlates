@@ -97,7 +97,7 @@ class Dataset:
 		
 		for i in range(0, self.x[indx]):
 			for j in range(0, self.y[indx]):
-				matrix[y_img - 1 - self.Y[indx] + j][self.X[indx] + i] = 1	#may be error here
+				matrix[y_img - 1 - self.Y[indx] - j][self.X[indx] + i] = 1	#may be error here
 		
 		#print(matrix)
 		return matrix
