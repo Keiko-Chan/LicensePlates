@@ -12,16 +12,15 @@ PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track02' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0135' )
 SIGNS_NUM = 7
 IMG_FORMAT  = '.png'
-MARINA_RES_PATH = Path('..', '..', 'svn', 'trunk', 'launch', 'r26041_20220920_170241_brazilian') 
-MARINA_RES_PATH_LP = Path('..', '..', 'svn', 'trunk', 'launch', 'r26041_20220927_120613_brazilian')
+MARINA_RES_PATH = Path('..', '..', 'svn', 'trunk', 'launch', 'result') 
+MARINA_RES_PATH_LP = Path('..', '..', 'svn', 'trunk', 'launch', 'result_for_lp')
 
-def jaccard_res(rect, data, index):
+def jaccard_res(points, data, index, alg):
 
-	pred = Si.get_bin_matrix(rect, data, index)
+	pred = Si.get_bin_matrix(ponts_4, data, index)
 	true = data.get_bin_matrix(index)
 
 	similarity = jaccard_score(pred, true, average="micro")
-
 
 	#print(index + 1, "similarity =", similarity)
 	return similarity
@@ -79,7 +78,7 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 
 	return res
 	
-def sign_average(data, rectangle, number):
+def sign_average(data, rectangle, number, how_calc):
 	#print(rectangle)
 	#res = 0
 	res1 = 0
@@ -124,9 +123,9 @@ def br_motobike_sort(rectangles, signes_num):
 		
 	return sort_rectangles
 	
-	
-def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'):		#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
-												#cut - 'lp' or 'car'
+														#how_calc - 'my_alg', 'skl_met'
+def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cut = 'lp', typ = 'all'):		#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
+														#cut - 'lp' or 'car'	#typ - 'all', 'car', 'motorcycle' 
 	rectangle_lp = 1
 	rectangle = 1
 	iou = 1
@@ -196,11 +195,14 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'
 					rectangles = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
 				
 				case "marina":
-					rectangles = Ma.read_marina_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
+					if(how_calc == "skl_met"):
+						rectangles = Ma.get_points(result, SIGNS_NUM)
+					else:
+						rectangles = Ma.read_marina_res(result, SIGNS_NUM, lp_pos[0], lp_pos[1])
 					#print(rectangles)
 					#to do if rejected or something like that
 		
-			iou = sign_average(data, rectangles, SIGNS_NUM)
+			iou = sign_average(data, rectangles, SIGNS_NUM, how_calc)
 	
 	if(only_lp == 1 or only_lp == 2):
 		cut_img, lp_X, lp_Y = data.cut_img(cut)
@@ -220,15 +222,17 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'
 					iou_lp = -1
 					
 			case "marina":
-				case "UFPR":
-					mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ufpr-alpr_testing")
-				case "SSIG":
-					mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ssig-plate_testing")
-				case _:
-					return -2
+				match dset:
+					case "UFPR":
+						mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ufpr-alpr_testing")
+					case "SSIG":
+						mar_res_path_dset = Path(MARINA_RES_PATH_LP, "brazilian_ssig-plate_testing")
+					case _:
+						return -2
+				
 				result_lp = Ma.get_marina_res(dset, name, IMG_FORMAT, mar_res_path_dset)
 				
-				if(Ma.founded == False and only_lp == 2)
+				if(result_lp != -1 and Ma.founded(result_lp) == False and only_lp == 2):
 					iou_lp = -1
 				
 			case _:
@@ -244,6 +248,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'
 		
 		if(iou_lp == 1):
 			match algorithm:
+			
 				case "sighthound":
 					rectangle_lp = Si.read_sigh_res(result_lp, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
 					if(data.typ == "motorcycle"):
@@ -254,9 +259,13 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'
 					rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
 				
 				case "marina":
-					rectangles = Ma.read_marina_res(result, SIGNS_NUM, lp_X, lp_Y, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
+					if(how_calc == "skl_met"):
+						rectangle_lp = Ma.get_points(result, SIGNS_NUM)
+					else:
+						rectangle_lp = Ma.read_marina_res(result_lp, SIGNS_NUM, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
+					#print(rectangle_lp)
 		
-			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM)
+			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM, how_calc)
 		
 	match only_lp:
 		case 2:
@@ -267,7 +276,7 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'
 			return iou
 	
 #strange_list - list of names when iou_lp < iou (только для номера < для целой картинки)
-def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 'lp', typ = 'all', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
+def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, how_calc = 'my_alg', cut = 'lp', typ = 'all', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
 	res = 0
 	res_lp = 0
 	num_lp = 0
@@ -281,7 +290,7 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
-				#print(name)
+				print(name)
 				if(Path(dirs, name + IMG_FORMAT).exists()):
 				
 					if(remote_list is not None):
@@ -359,8 +368,8 @@ def main():
 	
 	#dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
 	#dataset_IoU_sight("../dataset2", "UFPR", 2, "sighthound", list1, "lp", "car")
-	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track39", "SSIG", 0, "marina", list1)
-	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track39", "SSIG", 0, "openalpr", list1)
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "marina", list1, 'my_alg')
+	#dataset_IoU_sight("../dataset1/SSIG-SegPlate", "SSIG", 0, "openalpr", list1)
 	#dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0135", "UFPR", 0, "sighthound", list1, "lp", "all")
 	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
 
