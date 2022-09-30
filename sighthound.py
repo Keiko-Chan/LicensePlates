@@ -130,7 +130,7 @@ def get_bin_matrix(sq, data, indx):
 		
 	for i in range(0, x):
 		for j in range(0, y):
-			matrix[y_img - 1 - Y + j][X + i] = 1	#may be error here
+			matrix[y_img - 1 - Y - j][X + i] = 1	#may be error here
 		
 	#print(matrix)
 	return matrix
