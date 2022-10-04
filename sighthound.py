@@ -6,10 +6,12 @@ import ssl
 import numpy as np
 from pathlib import Path
 import base64
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 HEADERS = {"Content-type": "application/json", "X-Access-Token": "HmR8TJhLukXa1oAoxODcjAhW3UJYwijqrFx8"}
 CONN = httplib.HTTPSConnection("dev.sighthoundapi.com", context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2))
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def sighthound(dset, dpath, name, img_format, image_data):
 
 	res_path = Path('sighthound_answ_' + dset)
@@ -58,7 +60,8 @@ def sighthound(dset, dpath, name, img_format, image_data):
 			return -1
 		
 	return result
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def get_number_of_signs(sight_res):
 	indx = sight_res.rfind("index")
 
@@ -69,7 +72,8 @@ def get_number_of_signs(sight_res):
 	res = int(sight_res[indx]) + 1
 	#print('signs stated =', res)
 	return res
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def get_lp_signs(sight_res):
 	indx1 = sight_res.find("name")
 	indx1 = indx1 + 7
@@ -83,8 +87,10 @@ def get_lp_signs(sight_res):
 		lp = sight_res[indx1:indx2]
 	#print('founded number =', lp)
 	return lp		
-
-def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):					#signes_num = 7 for brazil
+#------------------------------------------------------------------------------------------------------------------------
+#signes_num = 7 for brazil
+#------------------------------------------------------------------------------------------------------------------------
+def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):					
 
 	obj = sight_res['objects']
 	lp_num = 0
@@ -117,16 +123,16 @@ def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):			
 		symbol_rectangles[2][k] = obj[k]['bounding']['vertices'][1]['x'] - obj[k]['bounding']['vertices'][0]['x']		
 
 	return symbol_rectangles
-
-
-def get_bin_matrix(sq, data, indx):
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def get_bin_matrix(rect, data, indx):
 	y_img, x_img = data.get_img_size()	
 	matrix = np.zeros((y_img, x_img))
 	
-	X = sq[0][indx]
-	Y = sq[1][indx]
-	x = sq[2][indx]
-	y = sq[3][indx]
+	X = rect[0][indx]
+	Y = rect[1][indx]
+	x = rect[2][indx]
+	y = rect[3][indx]
 		
 	for i in range(0, x):
 		for j in range(0, y):
