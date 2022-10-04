@@ -6,7 +6,11 @@ from matplotlib import path as fig
 import sys
 sys.path.append('../../svn/trunk/prj.scripts/test/geometry/projective')
 import __init__ as In
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+CPP_PROJ_LIB_PATH = "/home/ekatrina/prog/svn/trunk/build/lib.linux64.release"
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def get_marina_res(dset, name, img_format, path):
 
 	json_path = Path(path, name + img_format + ".json" )
@@ -21,30 +25,48 @@ def get_marina_res(dset, name, img_format, path):
 			result = json.loads(file_content)
 	
 	return result
-	
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def proj_matrix(frame):
 	height = 130		#take it from template !!!
 	width = 400
 	
-	In.init("/home/ekatrina/prog/svn/trunk/build/lib.linux64.release")
+	In.init(CPP_PROJ_LIB_PATH)
 	prj_matrix = In.calc_projective_matrix_from_rect_to_quad(frame, width, height)	
 	return prj_matrix
-
-
-def points_transform(cell, prj_matrix):
-	point1 = np.array([cell[0], cell[1]])
-	point2 = np.array([cell[0], cell[1] + cell[3]])
-	point3 = np.array([cell[0] + cell[2], cell[1]])
-	point4 = np.array([cell[0] + cell[2], cell[1] + cell[3]])
-
-	new_point1 = In.projective_transform_point(point1, prj_matrix)
-	new_point2 = In.projective_transform_point(point2, prj_matrix)
-	new_point3 = In.projective_transform_point(point3, prj_matrix)
-	new_point4 = In.projective_transform_point(point4, prj_matrix)
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def transform(points_4, prj_matrix):
+	new_points_4 = np.zeros((4, 2))
 	
-	return new_point1, new_point2, new_point3, new_point4
+	for i in range(0, 4):
+		new_points_4[i] = In.projective_transform_point(points_4[i], prj_matrix)
+		
+	#print(new_points_4)
+	
+	return new_points_4
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def to_points_transform(cell, prj_matrix):
+	points_4 = np.zeros((4, 2))
+	
+	points_4[0] = np.array([cell[0], cell[1]])
+	points_4[1] = np.array([cell[0], cell[1] + cell[3]])
+	points_4[2] = np.array([cell[0] + cell[2], cell[1]])
+	points_4[3] = np.array([cell[0] + cell[2], cell[1] + cell[3]])
 
+	new_points_4 = transform(points_4, prj_matrix)
+	
+	return new_points_4	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def new_proj_matrix(frame, prj_matrix, height, width):
+	In.init(CPP_PROJ_LIB_PATH)
+	new_prj_matrix = In.calc_projective_matrix_from_quad_to_rect(frame, width, height)	
+	
+	return new_prj_matrix	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def founded(mar_res):
 	obj = mar_res['plates']
 	
@@ -54,9 +76,9 @@ def founded(mar_res):
 			return True
 			
 	return False
-	
-	
-def read_marina_res(mar_res, signes_num, lp_x = 0, lp_y = 0):
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
+def read_marina_res(mar_res, signes_num, lp_widht, lp_height, lp_x = 0, lp_y = 0):
 	obj = mar_res['plates']
 	lp_num = 0
 	
@@ -78,18 +100,22 @@ def read_marina_res(mar_res, signes_num, lp_x = 0, lp_y = 0):
 		return symbol_rectangles
 		
 	prj_matrix = proj_matrix(frame)
+	new_prj_matrix = new_proj_matrix(frame, prj_matrix, lp_height, lp_widht)
 	
 	for k in range(0, signes_num):
-		points = points_transform(obj[k], prj_matrix)
+		points = to_points_transform(obj[k], prj_matrix)
+		points = transform(points, new_prj_matrix)
 		
-		symbol_rectangles[1][k] = points[0][1]
-		symbol_rectangles[0][k] = points[0][0]
+		symbol_rectangles[1][k] = points[0][1] + lp_y
+		symbol_rectangles[0][k] = points[0][0] + lp_x
 		symbol_rectangles[3][k] = points[3][1] - points[0][1]
 		symbol_rectangles[2][k] = points[3][0] - points[0][0]		
 
-	return symbol_rectangles
-	
+	print(symbol_rectangles)
 
+	return symbol_rectangles
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def get_points(mar_res, signes_num):
 	obj = mar_res['plates']
 	lp_num = 0
@@ -114,13 +140,13 @@ def get_points(mar_res, signes_num):
 	prj_matrix = proj_matrix(frame)
 	
 	for k in range(0, signes_num):
-		point_4 = points_transform(obj[k], prj_matrix)
+		point_4 = to_points_transform(obj[k], prj_matrix)
 		for j  in range(0, 4):
 			points[k][j] = point_4[j]		
 
 	return points
-
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def get_binary_matrix(points_4, y_img, x_img):
 	
 	matrix = np.zeros((y_img, x_img))
