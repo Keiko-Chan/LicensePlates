@@ -7,24 +7,101 @@ import json
 import numpy as np
 import openalp_request as Op
 import marina_seg as Ma
-
+import pandas as pd
+import collections
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track02' )
 PATH_TO_DATA2 = Path('..', 'dataset2', 'UFPR-ALPR dataset', 'testing', 'track0135' )
 SIGNS_NUM = 7
 IMG_FORMAT  = '.png'
 MARINA_RES_PATH = Path('..', '..', 'svn', 'trunk', 'launch', 'result') 
 MARINA_RES_PATH_LP = Path('..', '..', 'svn', 'trunk', 'launch', 'result_for_lp')
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def check_result(algorithm, dset, name, lp):
+	res_path = Path('results', lp + '_' + algorithm + '_' + dset + ".json")
+	
+	if(res_path.exists() == False):
+		return -2
+	
+	with open(str(res_path)) as f:
+		file_content = f.read()
+		my_dict = json.loads(file_content)
+	
+	if name in my_dict:
+		return my_dict[name]
+	
+	else: 
+		return -2
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------		
+def sort_result(algorithm, dset, lp):
+	res_path = Path('results', lp + '_' + algorithm + '_' + dset + ".json")
+	sort_dict = None
+	
+	if(res_path.exists() == False):
+		return -1
+		
+	with open(str(res_path)) as f:
+		file_content = f.read()
+		my_dict = json.loads(file_content)
+	
+	for key in sorted(my_dict.keys()):
+			if(sort_dict == None):
+				sort_dict = {key: my_dict[key]}
+			else:
+				sort_dict.update({key: my_dict[key]})
+				
+	with open(str(res_path), 'w') as f:
+		json.dump(sort_dict, f, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, cls=None, indent=2)
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def save_result(iou, algorithm, dset, name, lp):
 
-def jaccard_res(points, data, index, alg):
-
-	pred = Si.get_bin_matrix(ponts_4, data, index)
+	res_path = Path('results')
+	
+	if(res_path.exists() == False):
+		res_path.mkdir()
+		
+	res_path = Path(res_path, lp + '_' + algorithm + '_' + dset + ".json")	
+	
+	if(res_path.exists() == True):
+		with open(str(res_path)) as f:
+			file_content = f.read()
+			my_dict = json.loads(file_content)	
+		
+		new_track = {name: iou}
+		my_dict.update(new_track)
+	
+	else:
+		my_dict = {name: iou}
+	
+	
+	with open(str(res_path), 'w') as f:
+		json.dump(my_dict, f, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, cls=None, indent=2)
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
+def jaccard_res(points, data, index, algorithm):
 	true = data.get_bin_matrix(index)
+	
+	match algorithm:
+		case "sighthound":
+			pred = Si.get_bin_matrix(points, data, index)	
+			
+		case "openalpr":
+			pred = Op.get_bin_matrix(points, data, index)
+		
+		case "marina":
+			y_img, x_img = data.get_img_size()
+			pred = Ma.get_binary_matrix(points[index], y_img, x_img)	
 
 	similarity = jaccard_score(pred, true, average="micro")
 
 	#print(index + 1, "similarity =", similarity)
 	return similarity
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def jaccard_rectangle(rect, data, indx): 	#min max
 	if(rect[3][indx] == 0 or rect[2][indx] == 0):
 		return 0
@@ -77,20 +154,23 @@ def jaccard_rectangle(rect, data, indx): 	#min max
 		#print("here something")
 
 	return res
-	
-def sign_average(data, rectangle, number, how_calc):
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
+def sign_average(data, rectangles, number, algorithm, how_calc = "my_alg"):
 	#print(rectangle)
 	#res = 0
-	res1 = 0
+	res = 0
 	for  sign_index in range(0, number):
-		#res = res + jaccard_res(rectangle, data, sign_index)
-		res1 = res1 + jaccard_rectangle(rectangle, data, sign_index)
+		if(how_calc == "skl_met"):
+			res = res + jaccard_res(rectangles, data, sign_index, algorithm)
+		else:
+			res = res + jaccard_rectangle(rectangles, data, sign_index)
 	
-	#res = res / SIGNS_NUM
-	res1 = res1 / SIGNS_NUM
+	res = res / SIGNS_NUM
 	#print("average =", res, res1)
-	return res1
-
+	return res
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def br_motobike_sort(rectangles, signes_num):
 	sort_rectangles = np.zeros((4, signes_num), int)
 	st = 1
@@ -122,14 +202,19 @@ def br_motobike_sort(rectangles, signes_num):
 		return sorted_rectangles
 		
 	return sort_rectangles
-	
-														#how_calc - 'my_alg', 'skl_met'
-def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cut = 'lp', typ = 'all'):		#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
-														#cut - 'lp' or 'car'	#typ - 'all', 'car', 'motorcycle' 
+#------------------------------------------------------------------------------------------------------------------------
+#how_calc - 'my_alg', 'skl_met'
+#only_lp == 0 -> all picture, only_lp == 1 -> only license plate
+#cut - 'lp' or 'car'
+#typ - 'all', 'car', 'motorcycle' 
+#------------------------------------------------------------------------------------------------------------------------														
+def calculate_IoU(name, dset, dpath, only_lp, algorithm, cut = 'lp', typ = 'all'):		
+														
 	rectangle_lp = 1
 	rectangle = 1
-	iou = 1
-	iou_lp = 1
+	iou = None
+	iou_lp = None
+	how_calc = "my_alg"
 	
 	data = Dat.Dataset(name + ".txt", name + IMG_FORMAT, dpath, dset)
 	data.read_txt()
@@ -179,10 +264,14 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cu
 	
 		if result == -1 or result == 0:
 			iou = result
-		
-		else:
-			#print("Detection Results = " + result )
 			
+			
+		if iou == None:
+			saved_iou = check_result(algorithm, dset, name, "image")
+			if(saved_iou != -2):
+				iou = saved_iou	
+
+		if iou == None:	
 			match algorithm:
 				case "sighthound":
 					rectangles = Si.read_sigh_res(result, SIGNS_NUM, 0, 0, lp_pos[0], lp_pos[1])
@@ -195,14 +284,16 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cu
 					rectangles = Op.points_to_rectangle(points, SIGNS_NUM, 0, 0)
 				
 				case "marina":
-					if(how_calc == "skl_met"):
-						rectangles = Ma.get_points(result, SIGNS_NUM)
-					else:
-						rectangles = Ma.read_marina_res(result, SIGNS_NUM, lp_pos[0], lp_pos[1])
+					rectangles = Ma.get_points(result, SIGNS_NUM)
+					how_calc = "skl_met"
+					#rectangles = Ma.read_marina_res(result, SIGNS_NUM, lp_pos[2], lp_pos[3], lp_pos[0], lp_pos[1])
 					#print(rectangles)
 					#to do if rejected or something like that
 		
-			iou = sign_average(data, rectangles, SIGNS_NUM, how_calc)
+			iou = sign_average(data, rectangles, SIGNS_NUM, algorithm, how_calc)
+			
+			save_result(iou, algorithm, dset, name, "image")
+			
 	
 	if(only_lp == 1 or only_lp == 2):
 		cut_img, lp_X, lp_Y = data.cut_img(cut)
@@ -245,8 +336,12 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cu
 		if (result_lp == -1 or result_lp == 0) and iou_lp != -1:
 			iou_lp = result_lp
 		
+		if(iou_lp == None):
+			saved_iou = check_result(algorithm, dset, name, cut)
+			if(saved_iou != -2):
+				iou_lp = saved_iou	
 		
-		if(iou_lp == 1):
+		if(iou_lp == None):
 			match algorithm:
 			
 				case "sighthound":
@@ -259,13 +354,13 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cu
 					rectangle_lp = Op.points_to_rectangle(points_lp, SIGNS_NUM, lp_X, lp_Y)
 				
 				case "marina":
-					if(how_calc == "skl_met"):
-						rectangle_lp = Ma.get_points(result, SIGNS_NUM)
-					else:
-						rectangle_lp = Ma.read_marina_res(result_lp, SIGNS_NUM, lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
+					rectangle_lp = Ma.get_points(result_lp, SIGNS_NUM)
+					how_calc = "skl_met"
+					#rectangle_lp = Ma.read_marina_res(result_lp, SIGNS_NUM, lp_pos[2], lp_pos[3], lp_pos[0] - lp_X, lp_pos[1] - lp_Y)
 					#print(rectangle_lp)
 		
-			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM, how_calc)
+			iou_lp = sign_average(data, rectangle_lp, SIGNS_NUM, algorithm, how_calc)
+			save_result(iou_lp, algorithm, dset, name, cut)
 		
 	match only_lp:
 		case 2:
@@ -274,9 +369,12 @@ def calculate_IoU(name, dset, dpath, only_lp, algorithm, how_calc = 'my_alg', cu
 			return iou_lp
 		case 0:
 			return iou
-	
+#------------------------------------------------------------------------------------------------------------------------
 #strange_list - list of names when iou_lp < iou (только для номера < для целой картинки)
-def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, how_calc = 'my_alg', cut = 'lp', typ = 'all', strange_list = None):		#dset - SSIG or UFPR		#algorithm - openalpr or sighthound
+#dset - SSIG or UFPR
+#algorithm - openalpr or sighthound
+#------------------------------------------------------------------------------------------------------------------------
+def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, cut = 'lp', typ = 'all', strange_list = None):		
 	res = 0
 	res_lp = 0
 	num_lp = 0
@@ -290,7 +388,7 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, how_ca
 			p = Path(files[i])
 			if(p.suffix == ".txt"):
 				name = str(p.stem)
-				print(name)
+				#print(name)
 				if(Path(dirs, name + IMG_FORMAT).exists()):
 				
 					if(remote_list is not None):
@@ -340,6 +438,12 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, how_ca
 					if iou != -1 and iou_lp == -1 and only_lp == 2:
 						num = num - 1
 						res = res - iou
+			
+	if(only_lp == 0):			
+		sort_result(algorithm, dset, "image")
+	else:
+		sort_result(algorithm, dset, cut)
+		
 						
 	print("trown out =", trow_out, "percent =", trow_out/(num + trow_out)*100)
 	
@@ -360,18 +464,19 @@ def dataset_IoU_sight(path, dset, only_lp, algorithm, remote_list = None, how_ca
 		
 		print("result =", res)
 		return res
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def main():
 	print("in process...")
 	
 	list1 = []
-	
+	#'skl_met'
 	#dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "sighthound", list1)
 	#dataset_IoU_sight("../dataset2", "UFPR", 2, "sighthound", list1, "lp", "car")
-	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track06", "SSIG", 0, "marina", list1, 'my_alg')
+	dataset_IoU_sight("../dataset1/SSIG-SegPlate/testing/Track02", "SSIG", 0, "sighthound", list1, "lp")
 	#dataset_IoU_sight("../dataset1/SSIG-SegPlate", "SSIG", 0, "openalpr", list1)
 	#dataset_IoU_sight("../dataset2/UFPR-ALPR dataset/testing/track0135", "UFPR", 0, "sighthound", list1, "lp", "all")
-	#dataset_IoU_sight("../dataset1", "SSIG", 0, "sighthound", list1)
 
 if __name__ == "__main__":
 	main()
