@@ -9,7 +9,8 @@ import cv2 as cv
 
 #PATH_TO_DATA1 = Path('..', 'dataset1', 'SSIG-SegPlate', 'testing', 'Track23' )
 #results = alpr.recognize_file(str(Path(PATH_TO_DATA1, "Track23[03].png")))
-
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------
 def save_openalpr_res(path, name, img_format, image_data, cut = 0):
 	#print(str(Path(path, img_name)))
 	
@@ -53,7 +54,8 @@ def save_openalpr_res(path, name, img_format, image_data, cut = 0):
 		return 0
 			
 	return result
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def read_openalpr_res(openalpr_res, signes_count):
 
 	characters = openalpr_res['characters']
@@ -70,7 +72,8 @@ def read_openalpr_res(openalpr_res, signes_count):
 		
 		#print(p[2][k][0], p[2][k][1])
 	return points
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def points_to_rectangle(points, signes_count, move_X, move_Y):
 	symbol_rectangles = np.zeros((4, signes_count), int)
 	
@@ -84,7 +87,8 @@ def points_to_rectangle(points, signes_count, move_X, move_Y):
 		symbol_rectangles[2][k] = points[1][k][0] - points[0][k][0]
 		
 	return symbol_rectangles
-	
+#------------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------------------	
 def get_bin_matrix(points, data, indx):
 	y_img, x_img = data.get_img_size()	
 	matrix = np.zeros((y_img, x_img))
