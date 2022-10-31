@@ -41,8 +41,8 @@ class Dataset:
 			ind = 0
 			st = ''
 			
-			dots = lines[start].find(":")
-			slen = len(lines[start])
+			dots = lines[i].find(":")
+			slen = len(lines[i])
 			
 			for k in lines[i][dots:slen]:
 				if k == ' ':
@@ -60,6 +60,7 @@ class Dataset:
 					st = st + k
 					
 			self.y[i - start] = int(st)
+			#print(self.y[i - start])
 			
 		if(self.dset == "UFPR"):
 			dots = lines[typ_l].find(":")
@@ -109,16 +110,16 @@ class Dataset:
 #------------------------------------------------------------------------------------------------------------------------
 #obg = 0 - license plate, obg = 1 - car
 #------------------------------------------------------------------------------------------------------------------------		
-	def get_lp_position(self, obg = 0):								
+	def get_lp_position(self, cut = 'lp'):								
 		f = open(str(Path(self.path, self.name_txt)), 'r')
 		lines = f.readlines()
 		
 		if(self.dset == "SSIG"):
 			num_line = 1
 		if(self.dset == "UFPR"):
-			if(obg == 1):
+			if(cut == 'car'):
 				num_line = 1
-			if(obg == 0):
+			if(cut == 'lp'):
 				num_line = 7
 			
 		if(self.dset != "SSIG" and self.dset != "UFPR"):
@@ -156,10 +157,7 @@ class Dataset:
 #------------------------------------------------------------------------------------------------------------------------		
 	def cut_img(self, cut):
 	
-		if(cut == 'lp'):
-			lp_X, lp_Y, lp_x, lp_y = self.get_lp_position()
-		if(cut == 'car'):
-			lp_X, lp_Y, lp_x, lp_y = self.get_lp_position(1)
+		lp_X, lp_Y, lp_x, lp_y = self.get_lp_position(cut)
 		
 		img = cv.imread(str(Path(self.path, self.name_img)))
 		
