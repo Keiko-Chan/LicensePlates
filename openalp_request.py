@@ -11,7 +11,7 @@ import cv2 as cv
 #results = alpr.recognize_file(str(Path(PATH_TO_DATA1, "Track23[03].png")))
 #------------------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------------------
-def save_openalpr_res(path, name, img_format, image_data, cut = 0):
+def save_openalpr_res(path, name, img_format, data, cut = 0):
 	#print(str(Path(path, img_name)))
 	
 	res_path = Path('openalpr_res')
@@ -19,7 +19,7 @@ def save_openalpr_res(path, name, img_format, image_data, cut = 0):
 	if(res_path.exists() == False):
 		res_path.mkdir()
 	
-	if(type(image_data) == int):
+	if(type(data) == int):
 		res_path = Path(res_path, name + '.json')
 	
 		if(res_path.exists() == False):
@@ -29,6 +29,8 @@ def save_openalpr_res(path, name, img_format, image_data, cut = 0):
 		res_path = Path(res_path, name + '_' + cut + '.json')
 		
 		if(res_path.exists() == False):
+			image_data, lp_X, lp_Y = data.cut_img(cut)
+			
 			im_bytes = base64.b64decode(image_data)
 			im_arr = np.frombuffer(im_bytes, dtype=np.uint8)  # im_arr is one-dim Numpy array
 			img = cv.imdecode(im_arr, flags=cv.IMREAD_COLOR)
