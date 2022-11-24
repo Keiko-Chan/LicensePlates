@@ -119,7 +119,7 @@ class Dataset:
 		if(self.dset == "UFPR"):
 			if(cut == 'car'):
 				num_line = 1
-			if(cut == 'lp'):
+			if(cut == 'lp' or type(cut) == int):
 				num_line = 7
 			
 		if(self.dset != "SSIG" and self.dset != "UFPR"):
@@ -147,9 +147,30 @@ class Dataset:
 					
 			if k.isdigit:
 				st = st + k
-					
-		#lp_y = int(st)
+								
 		
+		if(type(cut) == int):								#frame
+			X_max, Y_max = self.get_img_size()
+			xpr = cut % 1000 
+			ypr = cut // 1000
+			lp_X = lp_X - int(xpr * lp_x / 100)
+			lp_Y = lp_Y - int(ypr * lp_y / 100)
+			lp_y = lp_y + int(ypr * lp_y / 100)
+			lp_x = lp_x + int(xpr * lp_x / 100)
+			
+			if(lp_X < 0):
+				lp_X = 0
+				
+			if(lp_Y < 0):
+				lp_Y = 0
+				
+			if(lp_x + lp_X >= X_max - 1):
+				lp_x = X_max - lp_x - 1
+				
+			if(lp_y + lp_Y >= Y_max - 1):
+				lp_y = Y_max - lp_y - 1
+					
+					
 		#print(lp_X, lp_Y, lp_x, lp_y)
 		
 		return lp_X, lp_Y, lp_x, lp_y
@@ -157,7 +178,7 @@ class Dataset:
 #------------------------------------------------------------------------------------------------------------------------		
 	def cut_img(self, cut):
 	
-		lp_X, lp_Y, lp_x, lp_y = self.get_lp_position(cut)
+		lp_X, lp_Y, lp_x, lp_y = self.get_lp_position(cut)		
 		
 		img = cv.imread(str(Path(self.path, self.name_img)))
 		
