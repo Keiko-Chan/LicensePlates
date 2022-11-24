@@ -26,7 +26,7 @@ def save_openalpr_res(path, name, img_format, data, cut = 0):
 			subprocess.run(["alpr" , '-c' , 'br', str(Path(path, (name + img_format)))])
 	
 	else:
-		res_path = Path(res_path, name + '_' + cut + '.json')
+		res_path = Path(res_path, name + '_' + str(cut) + '.json')
 		
 		if(res_path.exists() == False):
 			image_data, lp_X, lp_Y = data.cut_img(cut)
@@ -35,7 +35,7 @@ def save_openalpr_res(path, name, img_format, data, cut = 0):
 			im_arr = np.frombuffer(im_bytes, dtype=np.uint8)  # im_arr is one-dim Numpy array
 			img = cv.imdecode(im_arr, flags=cv.IMREAD_COLOR)
 			
-			img_path = str(Path('openalpr_res', name + '_' + cut + img_format))
+			img_path = str(Path('openalpr_res', name + '_' + str(cut) + img_format))
 			cv.imwrite(img_path, cv.cvtColor(img, cv.COLOR_RGB2BGR)) 
 			
 			#cv.imshow("written", img)
@@ -91,7 +91,7 @@ def points_to_rectangle(points, signes_count, move_X, move_Y):
 	return symbol_rectangles
 #------------------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------------------	
-def get_bin_matrix(points, data, indx):
+def get_bin_matrix(points, data, indx, cut = "lp"):						##need to rewrite this function
 	y_img, x_img = data.get_img_size()	
 	matrix = np.zeros((y_img, x_img))
 	
