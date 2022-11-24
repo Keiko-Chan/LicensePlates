@@ -55,11 +55,11 @@ def sighthound(dset, dpath, name, img_format, data, cut):
 			if result['error'] == "ERROR_OVER_THROTTLE":
 				#print(result)
 				os.remove(res_path)
-				return sighthound(dset, dpath, name, img_format, image_data)
+				return sighthound(dset, dpath, name, img_format, image_data, cut)
 				
 			if result['error'] == "ERROR_USAGE":
 				os.remove(res_path)
-				return sighthound(dset, dpath, name, img_format, image_data)
+				return sighthound(dset, dpath, name, img_format, image_data, cut)
 			
 			return -1
 		
@@ -129,12 +129,20 @@ def read_sigh_res(sight_res, signes_num, move_X, move_Y, lp_x = 0, lp_y = 0):
 	return symbol_rectangles
 #------------------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------------------
-def get_bin_matrixx(rect, data, indx):
+def get_bin_matrix(rect, data, indx, cut = 0):
+	if(cut != 0):
+		move_x, move_y, no, nop = data.data.get_lp_position(cut)
+	else:
+		move_x = 0
+		move_y = 0
+		
+	
+
 	y_img, x_img = data.get_img_size()	
 	matrix = np.zeros((y_img, x_img))
 	
-	X = rect[0][indx]
-	Y = rect[1][indx]
+	X = rect[0][indx] + move_x
+	Y = rect[1][indx] + move_y
 	x = rect[2][indx]
 	y = rect[3][indx]
 		
@@ -145,7 +153,7 @@ def get_bin_matrixx(rect, data, indx):
 	#print(matrix)
 	return matrix
 ##------------------------------------------------------------------------------------------------------------------------
-def get_bin_matrix(rect, data, indx):
+def get_bin_matrixx(rect, data, indx):
 	y_img, x_img = data.get_img_size()
 	
 	points_4 =  np.zeros((4, 2), int)
